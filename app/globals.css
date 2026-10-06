@@ -26,6 +26,13 @@
   /* Animación del drawer (una sola vez al abrir) */
   --animate-drawer-down: drawer-down 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-shimmer: shimmer 2s infinite;
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
 
   @keyframes drawer-down {
     from {

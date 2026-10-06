@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import LoginForm from "./login-form";
 
-export default function LoginPage() {
+export default async function LoginPage() {
     return (
         <main className="flex min-h-dvh flex-col lg:flex-row">
             {/* === Panel de marca */}

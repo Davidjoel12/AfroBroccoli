@@ -7,7 +7,8 @@ import { VisitsChart, DistributionChart } from "@/components/home/charts";
 import { ClientsTable } from "@/components/home/clients-table";
 import { clientes, distribucion, metricas } from "@/lib/data";
 
-export default function Home() {
+export default async function Home() {
+
   const regulares = clientes.filter((c) => !c.membresia);
   const membresia = clientes.filter((c) => c.membresia);
 

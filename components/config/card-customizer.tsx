@@ -131,7 +131,7 @@ export default function CardCustomizer() {
           <div className="mt-4 flex items-center justify-between gap-3 border-t border-cream/10 pt-3">
             <p className="min-w-0 flex-1 text-[11px] leading-snug text-muted-nav">
               Código único del cliente
-              <span className="block font-semibold text-cream">{CODIGO_CLIENTE}</span>
+              {/* <span className="block font-semibold text-cream">{CODIGO_CLIENTE}</span> */}
             </p>
             <div className="shrink-0 rounded-lg bg-white p-1.5">
               {qr ? (
