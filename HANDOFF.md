@@ -82,10 +82,31 @@
 - Iterar en tandas acotadas (build → 1 ronda de capturas → corregir todo junto → máximo 1 ronda de confirmación).
 
 ## 8. Pendientes (para la Fase G y después)
-1. **Fase G (única fase restante)**: revisión visual desktop + móvil de Home, QR, Configuración y Login con capturas del usuario → corregir detalles en una tanda → `next build` (y lint) → limpiar `app/demo/` → commit inicial (repo sin commits).
+1. ~~Fase G~~ — **completada** (revisada con skeletons, demo eliminado, build OK, repo en GitHub main).
 2. **Elegir la font script definitiva** (`--font-script`, globals.css ~línea 31; 7 candidatas cargadas).
 3. Opcionales: `impeccable init` (PRODUCT.md), guardar patrones en `.interface-design/system.md`, activar hooks de impeccable.
-4. Tras G: backend **Supabase** (auth con detección automática de rol, QR único real por cliente, registro por QR, sync clientes/sellos/membresía) + deploy **Vercel**.
+4. ~~Tras G: backend~~ → backend planificado en §10. **Estado: Fase G completada, repo en GitHub (main), queda empezar backend.**
+
+## 9b. Backend — plan acordado (v2, 2026-10-06, en planificación, sin código aún)
+- **Supabase** (DB + Auth) + **Vercel** (deploy). Free tier: pedir upgrade Pro cuando el salón lo use en serio (se pausa tras inactividad).
+- **Roles**: `admin` y `staff` (sin selector en UI; rol se lee de `profiles` tras login).
+  - **admin**: ver todo, registrar clientes, editar/eliminar clientes, editar meta y personalización de tarjeta.
+  - **staff**: registrar clientes (manual en QR), sumar visita/sello escaneando QR, reenviar tarjeta por WhatsApp, buscar clientes. NO edita meta ni edita/elimina clientes.
+- **Tablas**:
+  ```sql
+  profiles  id uuid pk references auth.users, nombre, role check in ('admin','staff'), created_at
+  clientes  id uuid pk, codigo text unique (ej 'AB-0042'), nombre, email, telefono, pais,
+            membresia boolean default false, created_at
+  visitas   id, cliente_id FK, created_at        -- para filtro "más frecuentes"
+  sellos    cliente_id PK FK, cantidad, updated_at
+  config    fila única: meta int default 5, color_acento, recompensa  -- editable solo admin
+  ```
+- **Meta de sellos fija en 5** por defecto, editable solo por admin y **persistida en Supabase** (no localStorage) desde `configuracion/personalizar-tarjeta`.
+- **Flujo central**: staff escanea QR → busca `clientes.codigo` → si existe, inserta visita y `sellos + 1` automático; si no existe, opción de registrar en el momento. Si el cliente no trae tarjeta: buscarlo en Home o en "Búsqueda de cliente manual" de QR y reenviar tarjeta por WhatsApp (wa.me).
+- **UI por hacer en backend**: columnas Editar/Eliminar (solo admin) en ambas tablas de Home; filtros "más frecuentes" y "más sellos" en ambas tablas; personalizar-tarjeta persistido en Supabase.
+- **RLS** en todas las tablas; staff: lectura + update de `sellos.cantidad`; admin: todo. Anon key en frontend, service role nunca.
+- **Orden de ejecución**: 1) crear proyecto Supabase (URL + anon key), 2) migraciones SQL + RLS, 3) `@supabase/supabase-js` + `lib/supabase.ts`, 4) reemplazar mocks pantalla por pantalla (login → QR → Home → Configuración), 5) deploy Vercel con env vars.
+- Meta/sellos mock actual en `lib/data.ts`, tipos en `lib/types.ts`.
 
 ## 9. Cómo continuar
 - Responder en español, fidelidad al Figma, respetar decisiones del usuario (etiquetas "Perfil", subtítulo "de la empresa", sin fecha de nacimiento, guardar/auto-detectar rol).
