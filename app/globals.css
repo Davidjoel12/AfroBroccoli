@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+/* === Tokens de marca AfroBroccoli */
+@theme {
+  /* Fondo y texto */
+  --color-cream: #fff8ee;     /* fondo de pagina */
+  --color-ink: #221b19;       /* texto principal, nav, superficies oscuras */
+  --color-muted: #6b5f5a;     /* labels, texto secundario, placeholders */
+  --color-muted-nav: #bdb3ad; /* items inactivos sobre nav oscuras */
+
+  /* Acciones */
+  --color-primary: #6fc22d;   /* verde: botones principales, items activos */
+  --color-accent: #ff66c4;    /* rosa: segundo boton, cta de camara */
+  --color-gold: #ffd700;      /* dorado: sellos y programa de lealtad */
+  --color-mint: #85d2ca;     /* menta: banner bienvenida, iconos suaves */
+
+  /* Estados */
+  --color-success: #6fc22d;   
+  --color-pending: #ffae6b; 
+  --color-danger: #e23650;  
+
+  /* Formas */
+  --radius-card: 20px;
+  --radius-button: 10px;
+
+  /* Animación del drawer (una sola vez al abrir) */
+  --animate-drawer-down: drawer-down 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-in: fade-in 0.2s ease-out;
+
+  @keyframes drawer-down {
+    from {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+}
+
+/* == Fuentes (variables que inyecta next/font) == */
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-script: var(--font-inter), "Segoe Script", cursive; /* ← ACÁ alterás la fuente manuscrita */
+}
+
+body {
+  background-color: var(--color-cream);
+  color:var(--color-ink);
+  font-family: var(--font-sans);
+}
