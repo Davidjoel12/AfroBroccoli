@@ -5,13 +5,15 @@ import QRCode from "qrcode";
 import { Card } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 
-const PUBLIC_URL = "https://app.afrobroccoli.com/registro";
+// Antes apuntaba a app.afrobroccoli.com (producción); ahora se genera con el origin actual.
+const PUBLIC_URL = "";
 
 export function MyQrCard() {
   const [src, setSrc] = useState<string>("");
 
   useEffect(() => {
-    QRCode.toDataURL(PUBLIC_URL, { width: 320, margin: 1 }).then(setSrc);
+    const url = `${window.location.origin}/registro`;
+    QRCode.toDataURL(url, { width: 320, margin: 1 }).then(setSrc);
   }, []);
 
   return (

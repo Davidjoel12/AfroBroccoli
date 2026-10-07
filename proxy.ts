@@ -32,8 +32,10 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const esLogin = request.nextUrl.pathname.startsWith("/login");
+  // Rutas públicas: login y el formulario de auto-registro por QR
+  const esPublica = esLogin || request.nextUrl.pathname.startsWith("/registro");
 
-  if (!user && !esLogin) {
+  if (!user && !esPublica) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

@@ -19,7 +19,7 @@ const NACIONALIDADES: { nombre: string; iso: string }[] = [
   { nombre: "Otro", iso: "pa" },
 ];
 
-export function RegisterForm() {
+export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: boolean }) {
   const [registrado, setRegistrado] = useState(false);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -116,15 +116,17 @@ export function RegisterForm() {
           </Field>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-muted">
-          <input
-            type="checkbox"
-            className="accent-[#6FC22D]"
-            checked={membresia}
-            onChange={(e) => setMembresia(e.target.checked)}
-          />
-          <span>Cliente con membresía</span>
-        </label>
+        {mostrarMembresia && (
+          <label className="flex items-center gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              className="accent-[#6FC22D]"
+              checked={membresia}
+              onChange={(e) => setMembresia(e.target.checked)}
+            />
+            <span>Cliente con membresía</span>
+          </label>
+        )}
 
         <label className="flex items-start gap-2 text-sm text-muted">
           <input type="checkbox" className="mt-1 accent-[#6FC22D]" required />
