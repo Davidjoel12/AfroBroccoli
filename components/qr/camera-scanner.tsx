@@ -15,6 +15,33 @@ export function CameraScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [fallback, setFallback] = useState(false);
+  const html5Ref = useRef<{ stop: () => Promise<void> } | null>(null);
+
+  // Fallback para navegadores sin BarcodeDetector nativo (Safari/iOS)
+  async function iniciarConHtml5Qrcode() {
+    setFallback(true);
+    await new Promise((r) => setTimeout(r, 100)); // espera a que se renderice el contenedor
+    const { Html5Qrcode } = await import("html5-qrcode");
+    const html5 = new Html5Qrcode("qr-reader");
+    html5Ref.current = html5;
+    try {
+      await html5.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (valor) => {
+          html5.stop().catch(() => {});
+          setResultado(valor);
+          setEstado("exito");
+          registrarVisita(extraerCodigo(valor));
+        },
+        () => {}
+      );
+    } catch {
+      detener();
+      setEstado("error");
+    }
+  }
 
   // Extrae el código del cliente del QR (URL "https://app.afrobroccoli.com/c/AB-0042" o texto "AB-0042")
   function extraerCodigo(valor: string): string {
@@ -53,6 +80,10 @@ export function CameraScanner() {
       streamRef.current = null;
     }
     if (videoRef.current) videoRef.current.srcObject = null;
+    if (html5Ref.current) {
+      html5Ref.current.stop().catch(() => {});
+      html5Ref.current = null;
+    }
   }
 
   useEffect(() => () => detener(), []);
@@ -60,9 +91,11 @@ export function CameraScanner() {
   function iniciar() {
     setEstado("camera");
     setResultado("");
+    setFallback(false);
     const Detector = (window as unknown as { BarcodeDetector?: new (o?: { formats?: string[] }) => { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string }[]> } }).BarcodeDetector;
     if (!Detector) {
-      setEstado("no-soportado");
+      // Fallback: html5-qrcode funciona en navegadores sin BarcodeDetector (p. ej. Safari/iOS)
+      iniciarConHtml5Qrcode();
       return;
     }
 
@@ -123,8 +156,12 @@ export function CameraScanner() {
 
       {estado === "camera" && (
         <>
-          <video ref={videoRef} className="aspect-video w-full rounded-lg border border-ink/10 bg-black" playsInline muted />
-          <Button variant="subtle" onClick={() => { detener(); setEstado("idle"); }}>Detener</Button>
+          {fallback ? (
+            <div id="qr-reader" className="aspect-video w-full overflow-hidden rounded-lg border border-ink/10 bg-black" />
+          ) : (
+            <video ref={videoRef} className="aspect-video w-full rounded-lg border border-ink/10 bg-black" playsInline muted />
+          )}
+          <Button variant="subtle" onClick={() => { detener(); setFallback(false); setEstado("idle"); }}>Detener</Button>
         </>
       )}
 
