@@ -107,6 +107,7 @@
 - **RLS** en todas las tablas; staff: lectura + update de `sellos.cantidad`; admin: todo. Anon key en frontend, service role nunca.
 - **Orden de ejecución**: 1) crear proyecto Supabase (URL + anon key), 2) migraciones SQL + RLS, 3) `@supabase/supabase-js` + `lib/supabase.ts`, 4) reemplazar mocks pantalla por pantalla (login → QR → Home → Configuración), 5) deploy Vercel con env vars.
 - Meta/sellos mock actual en `lib/data.ts`, tipos en `lib/types.ts`.
+- **Estado (2026-10-06)**: IMPLEMENTADO el MVP esencial — migraciones en Supabase, login real + proxy que protege rutas, logout en nav, perfil real en Configuración, Home con datos reales (métricas, tablas, serie de visitas, distribución), registro de clientes con membresía, escáner QR que suma visita+sello, búsqueda manual, toggle de membresía solo admin (Home y QR), filtros por sellos/frecuentes/A–Z en ambas tablas, meta global persistida en `config` (editable solo admin). Pendiente: elegir font script definitiva, deploy Vercel.
 
 ## 9. Cómo continuar
 - Responder en español, fidelidad al Figma, respetar decisiones del usuario (etiquetas "Perfil", subtítulo "de la empresa", sin fecha de nacimiento, guardar/auto-detectar rol).

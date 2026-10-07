@@ -5,12 +5,78 @@ import { Card } from "@/components/ui/card";
 import { MetricCard } from "@/components/home/metric-card";
 import { VisitsChart, DistributionChart } from "@/components/home/charts";
 import { ClientsTable } from "@/components/home/clients-table";
-import { clientes, distribucion, metricas } from "@/lib/data";
+import { construirSeriesVisitas } from "@/lib/data";
+import { createClient } from "@/lib/supabase-server";
+import { Cliente } from "@/lib/types";
 
 export default async function Home() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: perfil } = user
+    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
+    : { data: null };
+  const esAdmin = perfil?.role === "admin";
+
+  const { data: clientesData } = await supabase
+    .from("clientes")
+    .select("id, nombre, email, pais, telefono, membresia, sellos(cantidad)");
+
+  const { data: visitasData } = await supabase
+    .from("visitas")
+    .select("created_at, cliente_id, clientes(membresia)");
+
+  const { data: configData } = await supabase.from("config").select("meta").eq("id", 1).single();
+  const metaGlobal = configData?.meta ?? 5;
+
+  const visitasPorCliente = new Map<string, number>();
+  for (const v of visitasData ?? []) {
+    if (v.cliente_id) visitasPorCliente.set(v.cliente_id, (visitasPorCliente.get(v.cliente_id) ?? 0) + 1);
+  }
+
+  const clientes: Cliente[] = (clientesData ?? []).map((c) => {
+    const sellosJoin = c.sellos as unknown;
+    const sellos = Array.isArray(sellosJoin)
+      ? (sellosJoin[0] as { cantidad: number } | undefined)?.cantidad ?? 0
+      : (sellosJoin as { cantidad: number } | null)?.cantidad ?? 0;
+    const telefono = (c.telefono ?? "").replace(/[^\d]/g, "");
+    return {
+      id: c.id,
+      nombre: c.nombre,
+      correo: c.email ?? "",
+      pais: c.pais ?? "pa",
+      telefono,
+      telefonoFormato: c.telefono ?? "",
+      sellos,
+      metaSellos: metaGlobal,
+      membresia: c.membresia,
+      visitas: visitasPorCliente.get(c.id) ?? 0,
+    };
+  });
 
   const regulares = clientes.filter((c) => !c.membresia);
   const membresia = clientes.filter((c) => c.membresia);
+
+  const inicioDeHoy = new Date();
+  inicioDeHoy.setHours(0, 0, 0, 0);
+  const visitasHoy = (visitasData ?? []).filter(
+    (v) => new Date(v.created_at) >= inicioDeHoy
+  ).length;
+
+  const sellosTotales = clientes.reduce((acc, c) => acc + c.sellos, 0);
+  const distribucion = [regulares.length, membresia.length];
+  const metricas = { clientesTotales: clientes.length, visitasHoy, sellosTotales };
+
+  const visitasParaSerie = (visitasData ?? []).map((v) => {
+    const join = v.clientes as unknown;
+    const membresiaJoin = Array.isArray(join)
+      ? (join[0] as { membresia: boolean } | undefined)?.membresia
+      : (join as { membresia: boolean } | null)?.membresia;
+    return { created_at: v.created_at, membresia: membresiaJoin ?? false };
+  });
+  const series = construirSeriesVisitas(visitasParaSerie);
 
   return (
     <div className="flex flex-col gap-6">
@@ -62,14 +128,14 @@ export default async function Home() {
         </div>
 
         <Card className="min-w-0">
-          <VisitsChart />
+          <VisitsChart series={series} />
         </Card>
       </div>
 
       {/* ===== Tablas de clientes ===== */}
       <div className="grid gap-6 xl:grid-cols-2">
-        <ClientsTable titulo="Clientes regulares" clientes={regulares} />
-        <ClientsTable titulo="Clientes con membresía" clientes={membresia} />
+        <ClientsTable titulo="Clientes regulares" clientes={regulares} esAdmin={esAdmin} />
+        <ClientsTable titulo="Clientes con membresía" clientes={membresia} esAdmin={esAdmin} />
       </div>
     </div>
   );

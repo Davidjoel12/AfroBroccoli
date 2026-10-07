@@ -4,29 +4,37 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { clientes } from "@/lib/data";
+import { supabase } from "@/lib/supabase";
+import { useUsuario } from "@/lib/use-usuario";
+import { ToggleMembresia } from "@/components/home/toggle-membresia";
+
+type Resultado = { id: string; nombre: string; correo: string; telefono: string; membresia: boolean };
 
 export function ClientSearch() {
   const [query, setQuery] = useState("");
-  const [resultados, setResultados] = useState<typeof clientes>([]);
+  const [resultados, setResultados] = useState<Resultado[]>([]);
   const [buscado, setBuscado] = useState(false);
+  const [buscando, setBuscando] = useState(false);
+  const { usuario } = useUsuario();
+  const esAdmin = usuario?.role === "admin";
 
-  function buscar() {
-    const q = query.trim().toLowerCase();
+  async function buscar() {
+    const q = query.trim();
+    setBuscado(true);
     if (!q) {
       setResultados([]);
-      setBuscado(true);
       return;
     }
+    setBuscando(true);
+    const { data } = await supabase
+      .from("clientes")
+      .select("id, nombre, email, telefono, membresia")
+      .or(`nombre.ilike.%${q}%,email.ilike.%${q}%,telefono.ilike.%${q}%`)
+      .limit(10);
     setResultados(
-      clientes.filter(
-        (c) =>
-          c.nombre.toLowerCase().includes(q) ||
-          c.correo.toLowerCase().includes(q) ||
-          c.telefonoFormato.replace(/\s/g, "").includes(q.replace(/\s/g, "")),
-      ),
+      (data ?? []).map((c) => ({ id: c.id, nombre: c.nombre, correo: c.email ?? "", telefono: c.telefono ?? "", membresia: c.membresia }))
     );
-    setBuscado(true);
+    setBuscando(false);
   }
 
   return (
@@ -54,7 +62,9 @@ export function ClientSearch() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <Button type="submit" className="!h-11 whitespace-nowrap">Buscar</Button>
+        <Button type="submit" disabled={buscando} className="!h-11 whitespace-nowrap">
+          {buscando ? "Buscando…" : "Buscar"}
+        </Button>
       </form>
 
       {buscado && resultados.length === 0 && (
@@ -66,19 +76,32 @@ export function ClientSearch() {
       {resultados.length > 0 && (
         <ul className="mt-4 divide-y divide-ink/5">
           {resultados.map((c) => (
-            <li key={c.correo} className="flex items-center justify-between py-2 text-sm">
+            <li key={`${c.nombre}-${c.telefono}`} className="flex items-center justify-between py-2 text-sm">
               <div>
                 <p className="font-medium">{c.nombre}</p>
-                <p className="text-xs text-muted">{c.correo} · {c.telefonoFormato}</p>
+                <p className="text-xs text-muted">{c.correo} · {c.telefono}</p>
               </div>
-              <a
-                href={`https://wa.me/${c.telefono}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs font-semibold text-primary hover:underline"
-              >
-                WhatsApp
-              </a>
+              <div className="flex items-center gap-2">
+                {esAdmin && (
+                  <ToggleMembresia
+                    clienteId={c.id}
+                    membresia={c.membresia}
+                    onChanged={() =>
+                      setResultados((prev) =>
+                        prev.map((r) => (r.id === c.id ? { ...r, membresia: !r.membresia } : r))
+                      )
+                    }
+                  />
+                )}
+                <a
+                  href={`https://wa.me/${c.telefono}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  WhatsApp
+                </a>
+              </div>
             </li>
           ))}
         </ul>

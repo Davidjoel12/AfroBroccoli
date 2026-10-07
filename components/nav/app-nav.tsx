@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 const RUTAS = [
   { href: "/", label: "Home" },
@@ -35,9 +36,27 @@ function IconBell() {
   );
 }
 
+function IconLogout() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
+  );
+}
+
 export default function AppNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const [menuAbierto, setMenuAbierto] = useState(false);
+
+  async function cerrarSesion() {
+    await supabase.auth.signOut();
+    setMenuAbierto(false);
+    router.push("/login");
+    router.refresh();
+  }
 
   const esActiva = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -70,6 +89,14 @@ export default function AppNav() {
               />
             </Link>
           ))}
+          <button
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+            onClick={cerrarSesion}
+            className="ml-auto flex cursor-pointer items-center rounded-lg px-3 text-muted-nav transition-colors hover:bg-white/5 hover:text-cream"
+          >
+            <IconLogout />
+          </button>
         </nav>
       </header>
 
@@ -133,6 +160,14 @@ export default function AppNav() {
                 {ruta.label}
               </Link>
             ))}
+
+            <button
+              onClick={cerrarSesion}
+              className="mt-2 flex items-center gap-2 rounded-lg px-4 py-3 text-left font-script text-xl text-muted hover:bg-ink/5 hover:text-ink"
+            >
+              <IconLogout />
+              Salir
+            </button>
           </nav>
         </div>
       )}

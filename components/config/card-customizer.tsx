@@ -5,6 +5,8 @@ import QRCode from "qrcode";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { supabase } from "@/lib/supabase";
+import { useUsuario } from "@/lib/use-usuario";
 import { cn } from "@/lib/utils";
 
 const ACENTOS = [
@@ -26,6 +28,28 @@ export default function CardCustomizer() {
   const [meta, setMeta] = useState("5");
   const [guardado, setGuardado] = useState(false);
   const [qr, setQr] = useState<string>("");
+  const { usuario } = useUsuario();
+  const esAdmin = usuario?.role === "admin";
+
+  // Cargar la configuración guardada en Supabase
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("config").select("meta, color_acento, recompensa").eq("id", 1).single();
+      if (data) {
+        setAcento(data.color_acento);
+        setRecompensa(data.recompensa);
+        setMeta(String(data.meta));
+      }
+    })();
+  }, []);
+
+  async function guardar() {
+    const { error } = await supabase
+      .from("config")
+      .update({ meta: Number(meta), color_acento: acento, recompensa })
+      .eq("id", 1);
+    if (!error) setGuardado(true);
+  }
 
   useEffect(() => {
     QRCode.toDataURL(QR_URL, {
@@ -56,6 +80,11 @@ export default function CardCustomizer() {
         )}
 
         <div className="flex flex-col gap-5">
+          {!esAdmin && usuario && (
+            <p className="rounded-lg bg-pending/15 px-4 py-3 text-sm font-medium">
+              Solo el administrador puede modificar la tarjeta. Estás viendo la configuración actual.
+            </p>
+          )}
           <div>
             <p className="mb-2 text-sm font-medium text-muted">Color de acento</p>
             <div className="flex gap-3">
@@ -63,9 +92,10 @@ export default function CardCustomizer() {
                 <button
                   key={a.hex}
                   aria-label={a.nombre}
+                  disabled={!esAdmin}
                   onClick={() => setAcento(a.hex)}
                   className={cn(
-                    "h-8 w-8 cursor-pointer rounded-full transition-transform hover:scale-110",
+                    "h-8 w-8 cursor-pointer rounded-full transition-transform hover:scale-110 disabled:cursor-not-allowed disabled:opacity-60",
                     acento === a.hex && "scale-110 ring-2 ring-ink/40",
                   )}
                   style={{ backgroundColor: a.hex }}
@@ -77,6 +107,7 @@ export default function CardCustomizer() {
           <Field label="Recompensas">
             <Input
               value={recompensa}
+              disabled={!esAdmin}
               onChange={(e) => setRecompensa(e.target.value)}
               placeholder="Ej. 1 servicio gratis"
             />
@@ -87,7 +118,8 @@ export default function CardCustomizer() {
 
           <Field label="Meta de sellos">
             <select
-              className="h-11 rounded-lg border border-ink/20 bg-cream/50 px-3.5 text-ink focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none"
+              disabled={!esAdmin}
+              className="h-11 rounded-lg border border-ink/20 bg-cream/50 px-3.5 text-ink focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               value={meta}
               onChange={(e) => setMeta(e.target.value)}
             >
@@ -97,9 +129,11 @@ export default function CardCustomizer() {
             </select>
           </Field>
 
-          <Button onClick={() => setGuardado(true)} className="w-full sm:w-auto">
-            Guardar y aplicar
-          </Button>
+          {esAdmin && (
+            <Button onClick={guardar} className="w-full sm:w-auto">
+              Guardar y aplicar
+            </Button>
+          )}
         </div>
       </Card>
 

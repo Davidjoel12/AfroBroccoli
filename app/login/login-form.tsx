@@ -1,11 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
-
-// Usuario de mentira mientras no hay backend
-const USUARIO_MOCK = { email: "martha@afrobroccoli.com", password: "afro123" };
+import { supabase } from "@/lib/supabase";
 
 export default function LoginForm() {
   const [pantalla, setPantalla] = useState<"login" | "recuperar">("login");
@@ -15,19 +14,19 @@ export default function LoginForm() {
   const [emailRecuperacion, setEmailRecuperacion] = useState("");
   const [enlaceEnviado, setEnlaceEnviado] = useState(false);
 
-  function handleSubmit(e: FormEvent) {
+  const router = useRouter();
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setEstado("loading");
-    // Simulamos la demora del servidor
-    setTimeout(() => {
-      if (email === USUARIO_MOCK.email && password === USUARIO_MOCK.password) {
-        setEstado("idle");
-        // TODO: cuando haya backend, acá va Supabase Auth y la redirección al Home
-        alert("¡Sesión iniciada, Swanny!");
-      } else {
-        setEstado("error");
-      }
-    }, 800);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setEstado("error");
+    } else {
+      setEstado("idle");
+      router.push("/");
+      router.refresh();
+    }
   }
 
   // ---- Vista: recuperar contraseña ----
@@ -57,8 +56,11 @@ export default function LoginForm() {
           </p>
         ) : (
           <Button
-            onClick={() => {
-              if (emailRecuperacion) setEnlaceEnviado(true);
+            onClick={async () => {
+              if (emailRecuperacion) {
+                await supabase.auth.resetPasswordForEmail(emailRecuperacion);
+                setEnlaceEnviado(true);
+              }
             }}
           >
             Enviar enlace

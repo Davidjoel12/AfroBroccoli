@@ -11,7 +11,7 @@ import {
 } from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { useState } from "react";
-import { seriesVisitas } from "@/lib/data";
+import { SerieVisitas } from "@/lib/data";
 import { Periodo } from "@/lib/types";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
@@ -19,9 +19,9 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Le
 const PRIMARY = "#6FC22D";
 const GOLD = "#FFD700";
 
-export function VisitsChart() {
+export function VisitsChart({ series }: { series: SerieVisitas }) {
   const [periodo, setPeriodo] = useState<Periodo>("dia");
-  const dataSet = seriesVisitas[periodo];
+  const dataSet = series[periodo];
 
   return (
     <div className="flex h-full flex-col gap-3">

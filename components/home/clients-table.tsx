@@ -1,5 +1,30 @@
+"use client";
+
+import { useState } from "react";
 import { Cliente } from "@/lib/types";
 import { Card } from "@/components/ui/card";
+import { ToggleMembresia } from "./toggle-membresia";
+import { cn } from "@/lib/utils";
+
+type Orden = "az" | "sellos" | "frecuentes";
+
+const ETIQUETA_ORDEN: Record<Orden, string> = {
+  az: "A–Z",
+  sellos: "Más sellos",
+  frecuentes: "Más frecuentes",
+};
+
+function ordenar(clientes: Cliente[], orden: Orden): Cliente[] {
+  const copia = [...clientes];
+  switch (orden) {
+    case "sellos":
+      return copia.sort((a, b) => b.sellos - a.sellos);
+    case "frecuentes":
+      return copia.sort((a, b) => b.visitas - a.visitas);
+    default:
+      return copia.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+}
 
 function Sellos({ cliente }: { cliente: Cliente }) {
   const porcentaje = Math.min(100, Math.round((cliente.sellos / cliente.metaSellos) * 100));
@@ -19,11 +44,85 @@ function Bandera({ pais }: { pais: string }) {
   return <span className={`fi fi-${pais} fis rounded-full`} style={{ width: 32, height: 32 }} />;
 }
 
-export function ClientsTable({ titulo, clientes }: { titulo: string; clientes: Cliente[] }) {
+export function ClientsTable({ titulo, clientes, esAdmin = false }: { titulo: string; clientes: Cliente[]; esAdmin?: boolean }) {
+  const [orden, setOrden] = useState<Orden>("az");
+  const [abierto, setAbierto] = useState(false);
+  const clientesOrdenados = ordenar(clientes, orden);
+
   return (
     <Card className="p-0">
-      <h3 className="p-6 pb-4 text-lg font-semibold">{titulo}</h3>
-      {clientes.length === 0 ? (
+      <div className="flex flex-wrap items-center justify-between gap-3 p-6 pb-4">
+        <h3 className="text-lg font-semibold">{titulo}</h3>
+        <div className="relative">
+          <button
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded={abierto}
+            onClick={() => setAbierto((v) => !v)}
+            className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-ink/15 bg-cream/60 pl-4 pr-3 text-xs font-semibold text-ink shadow-sm transition-colors hover:border-primary/50 hover:bg-cream focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
+          >
+            {ETIQUETA_ORDEN[orden]}
+            <svg
+              aria-hidden
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={cn("text-muted transition-transform", abierto && "rotate-180")}
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+
+          {abierto && (
+            <>
+              {/* Cierra al hacer clic afuera */}
+              <button
+                type="button"
+                aria-hidden
+                tabIndex={-1}
+                className="fixed inset-0 z-10 cursor-default"
+                onClick={() => setAbierto(false)}
+              />
+              <ul
+                role="listbox"
+                aria-label={`Ordenar ${titulo}`}
+                className="absolute right-0 z-20 mt-2 min-w-[160px] overflow-hidden rounded-2xl border border-ink/10 bg-white p-1.5 shadow-lg"
+              >
+                {(Object.keys(ETIQUETA_ORDEN) as Orden[]).map((opcion) => (
+                  <li key={opcion} role="option" aria-selected={orden === opcion}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrden(opcion);
+                        setAbierto(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors",
+                        orden === opcion
+                          ? "bg-primary/15 font-semibold text-ink"
+                          : "text-muted hover:bg-cream hover:text-ink"
+                      )}
+                    >
+                      {ETIQUETA_ORDEN[opcion]}
+                      {orden === opcion && (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      </div>
+      {clientesOrdenados.length === 0 ? (
         <p className="p-6 pt-0 text-sm text-muted">No hay clientes en esta categoría.</p>
       ) : (
         <>
@@ -37,10 +136,11 @@ export function ClientsTable({ titulo, clientes }: { titulo: string; clientes: C
                   <th className="py-3">Sellos</th>
                   <th className="py-3">Teléfono</th>
                   <th className="py-3 pr-6 text-right">WhatsApp</th>
+                  {esAdmin && <th className="py-3 pr-6 text-right">Membresía</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-ink/5">
-                {clientes.map((c) => (
+                {clientesOrdenados.map((c) => (
                   <tr key={c.correo} className="hover:bg-cream/40">
                     <td className="px-6 py-4"><Bandera pais={c.pais} /></td>
                     <td className="py-4">
@@ -63,6 +163,11 @@ export function ClientsTable({ titulo, clientes }: { titulo: string; clientes: C
                         </svg>
                       </a>
                     </td>
+                    {esAdmin && (
+                      <td className="py-4 pr-6 text-right">
+                        <ToggleMembresia clienteId={c.id} membresia={c.membresia} />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -71,7 +176,7 @@ export function ClientsTable({ titulo, clientes }: { titulo: string; clientes: C
 
           {/* ===== Filas de tarjeta (móvil) ===== */}
           <ul className="divide-y divide-ink/5 md:hidden">
-            {clientes.map((c) => (
+            {clientesOrdenados.map((c) => (
               <li key={c.correo} className="flex items-center gap-4 p-4">
                 <Bandera pais={c.pais} />
                 <div className="min-w-0 flex-1">
@@ -79,6 +184,11 @@ export function ClientsTable({ titulo, clientes }: { titulo: string; clientes: C
                   <p className="truncate text-xs text-muted">{c.correo}</p>
                   <p className="truncate text-xs text-muted">{c.telefonoFormato}</p>
                   <div className="mt-1"><Sellos cliente={c} /></div>
+                  {esAdmin && (
+                    <div className="mt-2">
+                      <ToggleMembresia clienteId={c.id} membresia={c.membresia} />
+                    </div>
+                  )}
                 </div>
                 <a
                   href={`https://wa.me/${c.telefono}?text=${encodeURIComponent(`Hola ${c.nombre}, te comparto tu tarjeta de cliente de AfroBroccoli 🥦`)}`}

@@ -3,15 +3,48 @@
 import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 
 type Estado = "idle" | "camera" | "exito" | "error" | "no-soportado";
+type Mensaje = { tipo: "ok" | "no-encontrado" | "error"; texto: string } | null;
 
 export function CameraScanner() {
   const [estado, setEstado] = useState<Estado>("idle");
   const [resultado, setResultado] = useState<string>("");
+  const [mensaje, setMensaje] = useState<Mensaje>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Extrae el código del cliente del QR (URL "https://app.afrobroccoli.com/c/AB-0042" o texto "AB-0042")
+  function extraerCodigo(valor: string): string {
+    const match = valor.match(/\/c\/([^/\s?]+)/);
+    return match ? match[1] : valor.trim();
+  }
+
+  async function registrarVisita(codigo: string) {
+    const { data: cliente } = await supabase
+      .from("clientes")
+      .select("id, nombre, sellos(cantidad)")
+      .eq("codigo", codigo)
+      .single();
+
+    if (!cliente) {
+      setMensaje({ tipo: "no-encontrado", texto: `No hay ningún cliente con el código "${codigo}". Registralo primero desde el formulario.` });
+      return;
+    }
+
+    await supabase.from("visitas").insert({ cliente_id: cliente.id });
+
+    const sellosRow = Array.isArray(cliente.sellos) ? cliente.sellos[0] : cliente.sellos;
+    const nuevaCantidad = (sellosRow?.cantidad ?? 0) + 1;
+    await supabase
+      .from("sellos")
+      .upsert({ cliente_id: cliente.id, cantidad: nuevaCantidad, updated_at: new Date().toISOString() });
+
+    setMensaje({ tipo: "ok", texto: `✅ Visita registrada para ${cliente.nombre}. Sellos: ${nuevaCantidad}.` });
+  }
+
 
   function detener() {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -49,8 +82,10 @@ export function CameraScanner() {
             const codes = await detector.detect(video);
             if (codes.length > 0) {
               detener();
-              setResultado(codes[0].rawValue);
+              const valor = codes[0].rawValue;
+              setResultado(valor);
               setEstado("exito");
+              registrarVisita(extraerCodigo(valor));
             }
           } catch {
             // frames sin QR, seguimos esperando
@@ -98,7 +133,12 @@ export function CameraScanner() {
           <p className="rounded-lg bg-primary/15 px-4 py-3 text-sm font-medium">
             ✅ QR leído: <span className="break-all font-semibold">{resultado}</span>
           </p>
-          <Button className="w-full sm:w-auto" onClick={() => setEstado("idle")}>Escanear de nuevo</Button>
+          {mensaje && (
+            <p className={`rounded-lg px-4 py-3 text-sm font-medium ${mensaje.tipo === "ok" ? "bg-primary/15" : "bg-pending/15"}`}>
+              {mensaje.texto}
+            </p>
+          )}
+          <Button className="w-full sm:w-auto" onClick={() => { setEstado("idle"); setMensaje(null); }}>Escanear de nuevo</Button>
         </div>
       )}
 

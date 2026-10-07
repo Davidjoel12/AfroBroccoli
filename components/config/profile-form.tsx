@@ -1,13 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { supabase } from "@/lib/supabase";
+import { useUsuario } from "@/lib/use-usuario";
 
 export default function ProfileForm() {
   const [guardado, setGuardado] = useState(false);
+  const { usuario, cargando } = useUsuario();
+  const [nombre, setNombre] = useState("");
+  const [telefono, setTelefono] = useState("");
+
+  useEffect(() => {
+    if (usuario?.nombre) setNombre(usuario.nombre);
+  }, [usuario]);
+
+  useEffect(() => {
+    if (usuario?.telefono) setTelefono(usuario.telefono);
+  }, [usuario]);
+
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!usuario) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ nombre, telefono })
+      .eq("id", usuario.id);
+    if (!error) setGuardado(true);
+  }
 
   return (
     <Card className="p-6 sm:p-8">
@@ -47,24 +70,39 @@ export default function ProfileForm() {
           </div>
         </div>
 
-        <form
-          className="grid gap-5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setGuardado(true);
-          }}
-        >
+        <form className="grid gap-5" onSubmit={guardar}>
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Nombre completo">
-              <Input placeholder="Ej. Juan Pérez" />
+              <Input
+                name="nombre"
+                autoComplete="name"
+                placeholder="Ej. Juan Pérez"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+              />
             </Field>
             <Field label="Correo electrónico">
-              <Input type="email" placeholder="juang@email.com" />
+              <Input type="email" name="email" readOnly value={usuario?.email ?? ""} />
             </Field>
           </div>
           <Field label="Número de teléfono">
-            <Input type="tel" placeholder="+507 6XXX XXXX" />
+            <Input
+              name="telefono"
+              type="tel"
+              autoComplete="tel"
+              placeholder="+507 6XXX XXXX"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+            />
           </Field>
+          {!cargando && usuario && (
+            <p className="text-sm text-muted">
+              Rol:{" "}
+              <span className="font-semibold text-ink">
+                {usuario.role === "admin" ? "Administrador" : "Staff"}
+              </span>
+            </p>
+          )}
           <Button type="submit" className="w-full">Guardar cambios</Button>
         </form>
       </div>
