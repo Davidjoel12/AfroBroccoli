@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { MetricCard } from "@/components/home/metric-card";
 import { VisitsChart, DistributionChart } from "@/components/home/charts";
 import { ClientsTable } from "@/components/home/clients-table";
+import { Logo } from "@/components/ui/logo";
 import { construirSeriesVisitas } from "@/lib/data";
 import { createClient } from "@/lib/supabase-server";
 import { Cliente } from "@/lib/types";
@@ -28,8 +29,13 @@ export default async function Home() {
     .from("visitas")
     .select("created_at, cliente_id, clientes(membresia)");
 
-  const { data: configData } = await supabase.from("config").select("meta").eq("id", 1).single();
+  const { data: configData } = await supabase
+    .from("config")
+    .select("meta, logo_url")
+    .eq("id", 1)
+    .single();
   const metaGlobal = configData?.meta ?? 5;
+  const logoUrl = configData?.logo_url ?? null;
 
   const visitasPorCliente = new Map<string, number>();
   for (const v of visitasData ?? []) {
@@ -82,7 +88,7 @@ export default async function Home() {
     <div className="flex flex-col gap-6">
       {/* ===== Bienvenida (móvil-first: sala arriba de todo) ===== */}
       <Card className="flex items-center gap-4 bg-mint">
-        <Image src="/logo.jpg" alt="AfroBroccoli" width={56} height={56} className="rounded-2xl" />
+        <Logo src={logoUrl} alt="AfroBroccoli" width={56} height={56} className="rounded-2xl" />
         <div>
           <p className="font-script text-2xl leading-tight">Bienvenida de vuelta,</p>
           <p className="text-2xl font-bold leading-tight">AfroBroccoli</p>
@@ -134,8 +140,8 @@ export default async function Home() {
 
       {/* ===== Tablas de clientes ===== */}
       <div className="grid gap-6 xl:grid-cols-2">
-        <ClientsTable titulo="Clientes regulares" clientes={regulares} esAdmin={esAdmin} />
-        <ClientsTable titulo="Clientes con membresía" clientes={membresia} esAdmin={esAdmin} />
+        <ClientsTable titulo="Clientes regulares" clientes={regulares} esAdmin={esAdmin} meta={metaGlobal} />
+        <ClientsTable titulo="Clientes membresía" clientes={membresia} esAdmin={esAdmin} meta={metaGlobal} />
       </div>
     </div>
   );
