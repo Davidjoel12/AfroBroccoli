@@ -61,6 +61,8 @@ export const DICCIONARIO_EN: Record<string, string> = {
 
   // ===== Tablas =====
   "Ordenar": "Sort",
+  "Página": "Page",
+  "de": "of",
   "A–Z": "A–Z",
   "Más sellos": "Most stamps",
   "Más frecuentes": "Most frequent",

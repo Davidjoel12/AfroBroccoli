@@ -52,7 +52,7 @@ export default async function Home() {
       id: c.id,
       nombre: c.nombre,
       correo: c.email ?? "",
-      pais: c.pais ?? "pa",
+      pais: c.pais ?? null,
       telefono,
       telefonoFormato: c.telefono ?? "",
       sellos,

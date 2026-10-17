@@ -42,14 +42,51 @@ function Sellos({ cliente }: { cliente: Cliente }) {
   );
 }
 
-function Bandera({ pais }: { pais: string }) {
-  return <span className={`fi fi-${pais} fis rounded-full`} style={{ width: 32, height: 32 }} />;
+function Bandera({ pais }: { pais: string | null }) {
+  // Sin nacionalidad cargada: círculo neutro en vez de una bandera inventada
+  if (!pais) {
+    return (
+      <span
+        aria-hidden="true"
+        title="Nacionalidad sin cargar"
+        className="grid shrink-0 place-items-center rounded-full border border-dashed border-ink/25 bg-cream/60"
+        style={{ width: 32, height: 32 }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z" />
+        </svg>
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`fi fi-${pais} fis shrink-0 rounded-full`}
+      style={{ width: 32, height: 32 }}
+    />
+  );
 }
+
+const POR_PAGINA = 10;
 
 export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { titulo: string; clientes: Cliente[]; esAdmin?: boolean; meta?: number }) {
   const [orden, setOrden] = useState<Orden>("az");
+  const [pagina, setPagina] = useState(1);
   const t = useT();
   const clientesOrdenados = ordenar(clientes, orden);
+
+  // Paginación: 10 por página, se reinicia al cambiar el orden
+  const totalPaginas = Math.max(1, Math.ceil(clientesOrdenados.length / POR_PAGINA));
+  const pagActual = Math.min(pagina, totalPaginas);
+  const visibles = clientesOrdenados.slice(
+    (pagActual - 1) * POR_PAGINA,
+    pagActual * POR_PAGINA
+  );
+
+  function cambiarOrden(nuevo: Orden) {
+    setOrden(nuevo);
+    setPagina(1);
+  }
 
   return (
     <Card className="p-0">
@@ -59,7 +96,7 @@ export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { 
         <select
           aria-label={`${t("Ordenar")} ${titulo}`}
           value={orden}
-          onChange={(e) => setOrden(e.target.value as Orden)}
+          onChange={(e) => cambiarOrden(e.target.value as Orden)}
           className="h-9 w-[124px] shrink-0 cursor-pointer rounded-lg border border-ink/15 bg-white px-2 text-xs font-medium text-ink focus:border-primary focus:outline-none"
         >
           {(Object.keys(ETIQUETA_ORDEN) as Orden[]).map((o) => (
@@ -88,7 +125,7 @@ export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { 
                 </tr>
               </thead>
               <tbody className="divide-y divide-ink/5">
-                {clientesOrdenados.map((c) => (
+                {visibles.map((c) => (
                   <tr key={c.correo} className="hover:bg-cream/40">
                     <td className="px-6 py-4"><Bandera pais={c.pais} /></td>
                     <td className="py-4">
@@ -129,7 +166,7 @@ export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { 
 
           {/* ===== Filas de tarjeta (móvil) ===== */}
           <ul className="divide-y divide-ink/5 md:hidden">
-            {clientesOrdenados.map((c) => (
+            {visibles.map((c) => (
               <li key={c.correo} className="flex flex-col gap-3 p-4">
                 <div className="flex items-center gap-3">
                   <Bandera pais={c.pais} />
@@ -166,6 +203,34 @@ export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { 
               </li>
             ))}
           </ul>
+
+          {/* ===== Paginación ===== */}
+          {totalPaginas > 1 && (
+            <nav
+              aria-label={`Paginación de ${titulo}`}
+              className="flex items-center justify-between gap-3 border-t border-ink/10 p-4"
+            >
+              <button
+                type="button"
+                onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                disabled={pagActual === 1}
+                className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:border-primary/50 hover:bg-cream disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ←
+              </button>
+              <span className="text-xs text-muted">
+                {t("Página")} {pagActual} {t("de")} {totalPaginas}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                disabled={pagActual === totalPaginas}
+                className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:border-primary/50 hover:bg-cream disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                →
+              </button>
+            </nav>
+          )}
         </>
       )}
     </Card>

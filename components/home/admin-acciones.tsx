@@ -42,7 +42,7 @@ export function AdminAcciones({ cliente, meta }: { cliente: Cliente; meta: numbe
   const [nombre, setNombre] = useState(cliente.nombre);
   const [correo, setCorreo] = useState(cliente.correo);
   const [telefono, setTelefono] = useState(cliente.telefonoFormato);
-  const [pais, setPais] = useState(cliente.pais);
+  const [pais, setPais] = useState<string>(cliente.pais ?? "");
   // Texto (no número) para poder borrar el 0 y escribir vacío en el móvil
   const [sellos, setSellos] = useState(String(cliente.sellos));
 

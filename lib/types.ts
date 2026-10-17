@@ -2,7 +2,7 @@ export type Cliente = {
   id: string;
   nombre: string;
   correo: string;
-  pais: string; // código ISO para la bandera (fi)
+  pais: string | null; // código ISO para la bandera; null = sin nacionalidad cargada
   telefono: string; // internacional sin "+"
   telefonoFormato: string; // "+507 6000 0001"
   sellos: number; // sellos acumulados
