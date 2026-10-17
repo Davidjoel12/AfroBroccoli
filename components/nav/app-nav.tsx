@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { Logo } from "@/components/ui/logo";
 
 const RUTAS = [
   { href: "/", label: "Home" },
@@ -134,9 +135,12 @@ export default function AppNav() {
           />
           <nav className="absolute left-0 top-0 flex w-auto min-w-[220px] animate-drawer-down flex-col gap-2 rounded-br-[20px] bg-cream p-6 shadow-xl motion-reduce:animate-none">
             <div className="mb-6 flex items-center justify-between">
-              <span className="font-script text-2xl text-ink">
-                AfroBroccoli
-              </span>
+              <div className="flex items-center gap-2.5">
+                <Logo width={36} height={36} className="h-9 w-9 rounded-xl object-cover" />
+                <span className="font-script text-2xl text-ink">
+                  AfroBroccoli
+                </span>
+              </div>
               <button
                 aria-label="Cerrar menú"
                 onClick={() => setMenuAbierto(false)}
