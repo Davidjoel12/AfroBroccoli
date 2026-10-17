@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useUsuario } from "@/lib/use-usuario";
+import { useT } from "@/components/i18n/language-provider";
 
 const BUCKET = "logo";
 const LOGO_POR_DEFECTO = "/logo.jpg";
 
 export default function ProfileForm() {
+  const t = useT();
   const [guardado, setGuardado] = useState(false);
   const { usuario, cargando } = useUsuario();
   const [nombre, setNombre] = useState("");
@@ -36,7 +38,7 @@ export default function ProfileForm() {
         .from("config")
         .select("logo_url")
         .eq("id", 1)
-        .single();
+        .maybeSingle();
       if (data?.logo_url) setLogoUrl(data.logo_url);
     })();
   }, []);
@@ -105,12 +107,12 @@ export default function ProfileForm() {
 
   return (
     <Card className="p-6 sm:p-8">
-      <h2 className="text-2xl font-semibold">Perfil</h2>
-      <p className="mb-6 mt-1 text-base text-muted">Actualiza tus datos de la empresa</p>
+      <h2 className="text-2xl font-semibold">{t("Perfil")}</h2>
+      <p className="mb-6 mt-1 text-base text-muted">{t("Actualiza tus datos de la empresa")}</p>
 
       {guardado && (
         <p className="mb-4 rounded-lg bg-primary/15 px-4 py-3 text-sm font-medium">
-          ✅ Cambios guardados correctamente.
+          {t("✅ Cambios guardados correctamente.")}
         </p>
       )}
 
@@ -141,14 +143,14 @@ export default function ProfileForm() {
                 disabled={subiendo}
                 onClick={() => inputArchivo.current?.click()}
               >
-                {subiendo ? "Subiendo…" : "Subir nueva imagen"}
+                {subiendo ? t("Subiendo…") : t("Subir nueva imagen")}
               </Button>
               <button
                 className="h-10 w-full cursor-pointer whitespace-nowrap rounded-[10px] border border-ink/15 bg-white px-4 text-sm font-semibold text-ink transition-colors hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={subiendo}
                 onClick={eliminarAvatar}
               >
-                Eliminar avatar
+                {t("Eliminar avatar")}
               </button>
               {errorLogo && (
                 <p className="text-xs font-medium text-danger">{errorLogo}</p>
@@ -161,16 +163,15 @@ export default function ProfileForm() {
           // Vista de solo lectura para staff: ven el logo y su rol, sin edición
           <div className="flex flex-col gap-4 rounded-card bg-cream/60 p-5">
             <p className="text-sm text-muted">
-              Los datos del negocio los administra el administrador del salón. Preguntale a la
-              dueña si necesitás cambiar algo.
+              {t("Los datos del negocio los administra el administrador del salón. Preguntale a la dueña si necesitás cambiar algo.")}
             </p>
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
-                <dt className="text-muted">Tu nombre</dt>
+                <dt className="text-muted">{t("Tu nombre")}</dt>
                 <dd className="font-semibold text-ink">{nombre || "—"}</dd>
               </div>
               <div>
-                <dt className="text-muted">Tu correo</dt>
+                <dt className="text-muted">{t("Tu correo")}</dt>
                 <dd className="font-semibold break-all text-ink">{usuario?.email ?? "—"}</dd>
               </div>
             </dl>
@@ -178,7 +179,7 @@ export default function ProfileForm() {
         ) : (
           <form className="grid gap-5" onSubmit={guardar}>
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Nombre completo" htmlFor="perfil-nombre">
+              <Field label={t("Nombre completo")} htmlFor="perfil-nombre">
                 <Input
                   id="perfil-nombre"
                   name="nombre"
@@ -188,11 +189,11 @@ export default function ProfileForm() {
                   onChange={(e) => setNombre(e.target.value)}
                 />
               </Field>
-              <Field label="Correo electrónico" htmlFor="perfil-correo">
+              <Field label={t("Correo electrónico")} htmlFor="perfil-correo">
                 <Input id="perfil-correo" type="email" name="email" readOnly value={usuario?.email ?? ""} />
               </Field>
             </div>
-            <Field label="Número de teléfono" htmlFor="perfil-telefono">
+            <Field label={t("Número de teléfono")} htmlFor="perfil-telefono">
               <Input
                 id="perfil-telefono"
                 name="telefono"
@@ -203,15 +204,15 @@ export default function ProfileForm() {
                 onChange={(e) => setTelefono(e.target.value)}
               />
             </Field>
-            <Button type="submit" className="w-full">Guardar cambios</Button>
+            <Button type="submit" className="w-full">{t("Guardar cambios")}</Button>
           </form>
         )}
 
         {!cargando && usuario && (
           <p className="text-sm text-muted">
-            Rol:{" "}
+            {t("Rol:")} {" "}
             <span className="font-semibold text-ink">
-              {usuario.role === "admin" ? "Administrador" : "Staff"}
+              {usuario.role === "admin" ? t("Administrador") : t("Staff")}
             </span>
           </p>
         )}

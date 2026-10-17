@@ -5,7 +5,7 @@ import { Cliente } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { ToggleMembresia } from "./toggle-membresia";
 import { AdminAcciones } from "./admin-acciones";
-import { SelectMenu } from "@/components/ui/select-menu";
+import { useT } from "@/components/i18n/language-provider";
 
 type Orden = "az" | "sellos" | "frecuentes";
 
@@ -28,6 +28,7 @@ function ordenar(clientes: Cliente[], orden: Orden): Cliente[] {
 }
 
 function Sellos({ cliente }: { cliente: Cliente }) {
+  const t = useT();
   const porcentaje = Math.min(100, Math.round((cliente.sellos / cliente.metaSellos) * 100));
   return (
     <div className="flex w-28 flex-col gap-1">
@@ -35,7 +36,7 @@ function Sellos({ cliente }: { cliente: Cliente }) {
         <div className="h-full rounded-full bg-gold" style={{ width: `${porcentaje}%` }} />
       </div>
       <span className="text-xs font-semibold text-muted">
-        {cliente.sellos}/{cliente.metaSellos} sellos
+        {cliente.sellos}/{cliente.metaSellos} {t("sellos")}
       </span>
     </div>
   );
@@ -47,25 +48,29 @@ function Bandera({ pais }: { pais: string }) {
 
 export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { titulo: string; clientes: Cliente[]; esAdmin?: boolean; meta?: number }) {
   const [orden, setOrden] = useState<Orden>("az");
+  const t = useT();
   const clientesOrdenados = ordenar(clientes, orden);
 
   return (
     <Card className="p-0">
       <div className="flex items-center justify-between gap-3 p-6 pb-4">
-        <h3 className="min-w-0 truncate text-lg font-semibold">{titulo}</h3>
-        <SelectMenu
-          label={`Ordenar ${titulo}`}
-          className="w-[124px] shrink-0"
+        <h3 className="min-w-0 truncate text-lg font-semibold">{t(titulo)}</h3>
+        {/* Filtro nativo: se probó el menú custom y en móvil el <select> del sistema es más cómodo */}
+        <select
+          aria-label={`${t("Ordenar")} ${titulo}`}
           value={orden}
-          onChange={(v) => setOrden(v as Orden)}
-          options={(Object.keys(ETIQUETA_ORDEN) as Orden[]).map((o) => ({
-            value: o,
-            label: ETIQUETA_ORDEN[o],
-          }))}
-        />
+          onChange={(e) => setOrden(e.target.value as Orden)}
+          className="h-9 w-[124px] shrink-0 cursor-pointer rounded-lg border border-ink/15 bg-white px-2 text-xs font-medium text-ink focus:border-primary focus:outline-none"
+        >
+          {(Object.keys(ETIQUETA_ORDEN) as Orden[]).map((o) => (
+            <option key={o} value={o}>
+              {t(ETIQUETA_ORDEN[o])}
+            </option>
+          ))}
+        </select>
       </div>
       {clientesOrdenados.length === 0 ? (
-        <p className="p-6 pt-0 text-sm text-muted">No hay clientes en esta categoría.</p>
+        <p className="p-6 pt-0 text-sm text-muted">{t("No hay clientes en esta categoría.")}</p>
       ) : (
         <>
           {/* ===== Tabla (desktop) ===== */}
@@ -73,13 +78,13 @@ export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { 
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-t border-ink/10 text-xs uppercase tracking-wide text-muted">
-                  <th className="px-6 py-3">País</th>
-                  <th className="py-3">Cliente</th>
-                  <th className="py-3">Sellos</th>
-                  <th className="py-3">Teléfono</th>
-                  <th className="py-3 pr-6 text-right">WhatsApp</th>
-                  {esAdmin && <th className="py-3 pr-6 text-right">Membresía</th>}
-                  {esAdmin && <th className="py-3 pr-6 text-right">Acciones</th>}
+                  <th className="px-6 py-3">{t("País")}</th>
+                  <th className="py-3">{t("Cliente")}</th>
+                  <th className="py-3">{t("Sellos")}</th>
+                  <th className="py-3">{t("Teléfono")}</th>
+                  <th className="py-3 pr-6 text-right">{t("WhatsApp")}</th>
+                  {esAdmin && <th className="py-3 pr-6 text-right">{t("Membresía")}</th>}
+                  {esAdmin && <th className="py-3 pr-6 text-right">{t("Acciones")}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-ink/5">
@@ -97,8 +102,8 @@ export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { 
                         href={`https://wa.me/${c.telefono}?text=${encodeURIComponent(`Hola ${c.nombre}, te comparto tu tarjeta de cliente de AfroBroccoli 🥦`)}`}
                         target="_blank"
                         rel="noreferrer"
-                        aria-label={`Enviar tarjeta de ${c.nombre} por WhatsApp`}
-                        title={`Enviar tarjeta de ${c.nombre} por WhatsApp`}
+                        aria-label={`${t("Enviar tarjeta de")} ${c.nombre}`}
+                        title={`${t("Enviar tarjeta de")} ${c.nombre}`}
                         className="inline-grid h-9 w-9 place-items-center rounded-full bg-primary text-ink transition-colors hover:bg-primary/90"
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -137,7 +142,7 @@ export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { 
                     href={`https://wa.me/${c.telefono}?text=${encodeURIComponent(`Hola ${c.nombre}, te comparto tu tarjeta de cliente de AfroBroccoli 🥦`)}`}
                     target="_blank"
                     rel="noreferrer"
-                    aria-label={`Enviar tarjeta de ${c.nombre} por WhatsApp`}
+                    aria-label={`${t("Enviar tarjeta de")} ${c.nombre}`}
                     className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-ink"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">

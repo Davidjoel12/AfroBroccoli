@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { MetricCard } from "@/components/home/metric-card";
 import { VisitsChart, DistributionChart } from "@/components/home/charts";
 import { ClientsTable } from "@/components/home/clients-table";
-import { Logo } from "@/components/ui/logo";
+import { WelcomeCard, DistributionCard } from "@/components/home/home-blocks";
 import { construirSeriesVisitas } from "@/lib/data";
 import { createClient } from "@/lib/supabase-server";
 import { Cliente } from "@/lib/types";
@@ -87,13 +87,7 @@ export default async function Home() {
   return (
     <div className="flex flex-col gap-6">
       {/* ===== Bienvenida (móvil-first: sala arriba de todo) ===== */}
-      <Card className="flex items-center gap-4 bg-mint">
-        <Logo src={logoUrl} alt="AfroBroccoli" width={56} height={56} className="rounded-2xl" />
-        <div>
-          <p className="font-script text-2xl leading-tight">Bienvenida de vuelta,</p>
-          <p className="text-2xl font-bold leading-tight">AfroBroccoli</p>
-        </div>
-      </Card>
+      <WelcomeCard logoUrl={logoUrl} />
 
       {/* ===== Métricas ===== */}
       <div className="grid gap-4 sm:grid-cols-3">
@@ -114,32 +108,18 @@ export default async function Home() {
         />
       </div>
 
-      {/* ===== Acciones rápidas + distribución (se apila en móvil) ===== */}
+      {/* ===== Gráficos (se apilan en móvil) ===== */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="flex min-w-0 flex-col gap-4">
-          <h2 className="text-lg font-semibold">Acciones rápidas</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Link href="/qr" className={`${buttonVariants()} w-full px-4`}>
-              Escanear QR de cliente
-            </Link>
-            <Link href="/qr" className={`${buttonVariants({ variant: "accent" })} w-full px-4`}>
-              Ver mi QR de registro
-            </Link>
-          </div>
-
-          <Card className="bg-ink text-cream">
-            <h3 className="mb-3 text-lg font-semibold">Distribución de clientes</h3>
-            <DistributionChart data={distribucion} />
-          </Card>
-        </div>
+        <DistributionCard data={distribucion} />
 
         <Card className="min-w-0">
           <VisitsChart series={series} />
         </Card>
       </div>
 
-      {/* ===== Tablas de clientes ===== */}
-      <div className="grid gap-6 xl:grid-cols-2">
+      {/* 2 columnas solo a partir de 1536px: con menos ancho la tabla de 7 columnas
+          se cortaba y obligaba a scrollear dentro de la tarjeta */}
+      <div className="grid gap-6 2xl:grid-cols-2">
         <ClientsTable titulo="Clientes regulares" clientes={regulares} esAdmin={esAdmin} meta={metaGlobal} />
         <ClientsTable titulo="Clientes membresía" clientes={membresia} esAdmin={esAdmin} meta={metaGlobal} />
       </div>

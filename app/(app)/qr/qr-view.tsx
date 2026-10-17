@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PillTabs } from "@/components/ui/pill-tabs";
+import { useT } from "@/components/i18n/language-provider";
 import { MyQrCard } from "@/components/qr/my-qr-card";
 import { RegisterForm } from "@/components/qr/register-form";
 import { ClientSearch } from "@/components/qr/client-search";
@@ -10,6 +11,7 @@ import { CameraScanner } from "@/components/qr/camera-scanner";
 const TABS = ["Formulario", "QR-Cámara"] as const;
 
 export default function QrView() {
+  const t = useT();
   const [tab, setTab] = useState<"Formulario" | "QR-Cámara">("Formulario");
 
   return (
@@ -19,7 +21,7 @@ export default function QrView() {
       {/* Pills: solo en móvil/tablet */}
       <div className="lg:hidden">
         <PillTabs
-          tabs={[...TABS]}
+          tabs={TABS.map((x) => t(x))}
           active={tab}
           onChange={(t) => setTab(t as "Formulario" | "QR-Cámara")}
         />

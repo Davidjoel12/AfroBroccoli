@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useUsuario } from "@/lib/use-usuario";
 import { ToggleMembresia } from "@/components/home/toggle-membresia";
+import { useT } from "@/components/i18n/language-provider";
 
 type Resultado = { id: string; nombre: string; correo: string; telefono: string; membresia: boolean };
 
@@ -16,6 +17,7 @@ export function ClientSearch() {
   const [buscado, setBuscado] = useState(false);
   const [buscando, setBuscando] = useState(false);
   const { usuario } = useUsuario();
+  const t = useT();
   const esAdmin = usuario?.role === "admin";
 
   async function buscar() {
@@ -46,7 +48,7 @@ export function ClientSearch() {
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
         </span>
-        Búsqueda manual de clientes
+        {t("Búsqueda manual de clientes")}
       </h2>
 
       <form
@@ -58,18 +60,18 @@ export function ClientSearch() {
       >
         <Input
           className="min-w-0 flex-1"
-          placeholder="Buscar por nombre, teléfono o correo"
+          placeholder={t("Buscar por nombre, teléfono o correo")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         <Button type="submit" disabled={buscando} className="!h-11 whitespace-nowrap">
-          {buscando ? "Buscando…" : "Buscar"}
+          {buscando ? t("Buscando…") : t("Buscar")}
         </Button>
       </form>
 
       {buscado && resultados.length === 0 && (
         <p className="mt-4 text-sm text-muted">
-          No se encontraron clientes para "{query}". Verificá el nombre, teléfono o correo.
+          {t("No se encontraron clientes para")} "{query}". {t("Verificá el nombre, teléfono o correo.")}
         </p>
       )}
 
@@ -99,7 +101,7 @@ export function ClientSearch() {
                   rel="noreferrer"
                   className="text-xs font-semibold text-primary hover:underline"
                 >
-                  WhatsApp
+                  {t("WhatsApp")}
                 </a>
               </div>
             </li>

@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Logo } from "@/components/ui/logo";
+import { useIdioma } from "@/components/i18n/language-provider";
+import { LanguageSwitch } from "@/components/i18n/language-switch";
 
 const RUTAS = [
   { href: "/", label: "Home" },
@@ -62,6 +64,8 @@ export default function AppNav() {
   const esActiva = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  const { t } = useIdioma();
+
   return (
     <>
       {/* ===== Barra superior (desktop) ===== */}
@@ -80,7 +84,7 @@ export default function AppNav() {
                     : "text-muted-nav hover:text-cream"
                 }`}
               >
-                {ruta.label}
+                {t(ruta.label)}
               </span>
               {/* Línea indicadora de 2-3px en verde cuando está activa */}
               <span
@@ -90,21 +94,24 @@ export default function AppNav() {
               />
             </Link>
           ))}
-          <button
-            aria-label="Cerrar sesión"
-            title="Cerrar sesión"
-            onClick={cerrarSesion}
-            className="ml-auto flex cursor-pointer items-center rounded-lg px-3 text-muted-nav transition-colors hover:bg-white/5 hover:text-cream"
-          >
-            <IconLogout />
-          </button>
+          <div className="ml-auto flex items-center gap-1">
+            <LanguageSwitch className="mr-1" />
+            <button
+              aria-label={t("Cerrar sesión")}
+              title={t("Cerrar sesión")}
+              onClick={cerrarSesion}
+              className="flex cursor-pointer items-center rounded-lg px-3 text-muted-nav transition-colors hover:bg-white/5 hover:text-cream"
+            >
+              <IconLogout />
+            </button>
+          </div>
         </nav>
       </header>
 
       {/* ===== Encabezado (móvil y tablet) ===== */}
       <header className="flex items-center justify-between bg-ink px-4 py-3 lg:hidden">
         <button
-          aria-label="Abrir menú"
+          aria-label={t("Abrir menú")}
           onClick={() => setMenuAbierto(true)}
           className="cursor-pointer text-cream"
         >
@@ -116,7 +123,7 @@ export default function AppNav() {
         </Link>
 
         <button
-          aria-label="Notificaciones"
+          aria-label={t("Notificaciones")}
           className="relative cursor-pointer text-cream"
         >
           <IconBell />
@@ -142,7 +149,7 @@ export default function AppNav() {
                 </span>
               </div>
               <button
-                aria-label="Cerrar menú"
+                aria-label={t("Cerrar menú")}
                 onClick={() => setMenuAbierto(false)}
                 className="cursor-pointer text-muted hover:text-ink"
               >
@@ -161,7 +168,7 @@ export default function AppNav() {
                     : "text-muted hover:bg-ink/5"
                 }`}
               >
-                {ruta.label}
+                {t(ruta.label)}
               </Link>
             ))}
 
@@ -170,8 +177,12 @@ export default function AppNav() {
               className="mt-2 flex items-center gap-2 rounded-lg px-4 py-3 text-left font-script text-xl text-muted hover:bg-ink/5 hover:text-ink"
             >
               <IconLogout />
-              Salir
+              {t("Salir")}
             </button>
+
+            <div className="mt-2 border-t border-ink/10 pt-4">
+              <LanguageSwitch variant="light" />
+            </div>
           </nav>
         </div>
       )}

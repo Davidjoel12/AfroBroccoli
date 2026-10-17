@@ -7,6 +7,7 @@ import { Field, Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { PAISES } from "@/lib/countries";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { useT } from "@/components/i18n/language-provider";
 
 const PREFIJOS_UNICOS = Array.from(
   new Set(PAISES.map((p) => p.prefijo).filter((p): p is string => Boolean(p)))
@@ -15,6 +16,7 @@ const PREFIJOS_UNICOS = Array.from(
 const OPCIONES_PAIS = PAISES.map((p) => ({ value: p.iso, label: p.nombre }));
 
 export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: boolean }) {
+  const t = useT();
   const [registrado, setRegistrado] = useState(false);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -41,7 +43,7 @@ export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: b
       .insert({ codigo, nombre, email: correo, telefono: telefonoCompleto, pais: iso, membresia });
 
     if (errCliente) {
-      setError("No se pudo registrar. Verificá los datos e intentá de nuevo.");
+      setError(t("No se pudo registrar. Verificá los datos e intentá de nuevo."));
       setGuardando(false);
       return;
     }
@@ -55,14 +57,14 @@ export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: b
 
   return (
     <Card>
-      <h2 className="text-xl font-semibold">Formulario para registrar clientes</h2>
+      <h2 className="text-xl font-semibold">{t("Formulario para registrar clientes")}</h2>
       <p className="mb-6 text-sm text-muted">
-        Completá tus datos para crear tu cuenta y obtener tu QR.
+        {t("Completá tus datos para crear tu cuenta y obtener tu QR.")}
       </p>
 
       {registrado && (
         <p className="mb-4 rounded-lg bg-primary/15 px-4 py-3 text-sm font-medium">
-          ✅ ¡Cliente registrado! Ya puede escanear el QR para entrar.
+          {t("✅ ¡Cliente registrado! Ya puede escanear el QR para entrar.")}
         </p>
       )}
 
@@ -74,40 +76,40 @@ export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: b
 
       <form className="flex flex-col gap-4" onSubmit={registrar}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nombre completo" htmlFor="cliente-nombre">
+          <Field label={t("Nombre completo")} htmlFor="cliente-nombre">
             <Input id="cliente-nombre" placeholder="Ej. Juan Pérez" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
           </Field>
-          <Field label="Correo electrónico" htmlFor="cliente-correo">
+          <Field label={t("Correo electrónico")} htmlFor="cliente-correo">
             <Input id="cliente-correo" type="email" placeholder="juang@email.com" value={correo} onChange={(e) => setCorreo(e.target.value)} required />
           </Field>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-[120px_1fr]">
-          <Field label="Código de país">
+          <Field label={t("Código de país")}>
             <SelectMenu
-              label="Código de país"
+              label={t("Código de país")}
               value={codigoPais}
               onChange={setCodigoPais}
               searchable
               options={PREFIJOS_UNICOS.map((p) => ({ value: p, label: p }))}
             />
           </Field>
-          <Field label="Número de teléfono" htmlFor="cliente-telefono">
+          <Field label={t("Número de teléfono")} htmlFor="cliente-telefono">
             <Input id="cliente-telefono" type="tel" placeholder="+507 6XXX XXXX" value={telefono} onChange={(e) => setTelefono(e.target.value)} required />
           </Field>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Fecha de Nacimiento">
+          <Field label={t("Fecha de Nacimiento")}>
             <div className="grid grid-cols-3 gap-2">
-              <Input placeholder="Día" inputMode="numeric" />
-              <Input placeholder="Mes" inputMode="numeric" />
-              <Input placeholder="Año" inputMode="numeric" />
+              <Input placeholder={t("Día")} inputMode="numeric" />
+              <Input placeholder={t("Mes")} inputMode="numeric" />
+              <Input placeholder={t("Año")} inputMode="numeric" />
             </div>
           </Field>
-          <Field label="Nacionalidad">
+          <Field label={t("Nacionalidad")}>
             <SelectMenu
-              label="Nacionalidad"
+              label={t("Nacionalidad")}
               value={nacionalidad}
               onChange={setNacionalidad}
               searchable
@@ -124,17 +126,17 @@ export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: b
               checked={membresia}
               onChange={(e) => setMembresia(e.target.checked)}
             />
-            <span>Cliente con membresía</span>
+            <span>{t("Cliente con membresía")}</span>
           </label>
         )}
 
         <label className="flex items-start gap-2 text-sm text-muted">
           <input type="checkbox" className="mt-1 accent-[#6FC22D]" required />
-          <span>Acepto el tratamiento de datos personales según la ley 81 de Panamá.</span>
+          <span>{t("Acepto el tratamiento de datos personales según la ley 81 de Panamá.")}</span>
         </label>
 
         <Button type="submit" disabled={guardando}>
-          {guardando ? "Registrando…" : "Registrar y obtener QR"}
+          {guardando ? t("Registrando…") : t("Registrar y obtener QR")}
         </Button>
       </form>
     </Card>

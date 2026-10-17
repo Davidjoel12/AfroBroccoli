@@ -5,16 +5,17 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/components/i18n/language-provider";
 
 export default function LoginForm() {
+  const t = useT();
+  const router = useRouter();
   const [pantalla, setPantalla] = useState<"login" | "recuperar">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [estado, setEstado] = useState<"idle" | "loading" | "error">("idle");
   const [emailRecuperacion, setEmailRecuperacion] = useState("");
   const [enlaceEnviado, setEnlaceEnviado] = useState(false);
-
-  const router = useRouter();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,14 +35,15 @@ export default function LoginForm() {
     return (
       <div className="flex w-full max-w-md flex-col gap-5">
         <div className="flex flex-col gap-1">
-          <h2 className="text-3xl font-bold">Recuperar contraseña</h2>
+          <h2 className="text-3xl font-bold">{t("Recuperar contraseña")}</h2>
           <p className="text-sm text-muted">
-            Escribí tu correo y te enviamos un enlace para restablecerla.
+            {t("Escribí tu correo y te enviamos un enlace para restablecerla.")}
           </p>
         </div>
 
-        <Field label="Correo electrónico">
+        <Field label={t("Correo electrónico")} htmlFor="recuperar-correo">
           <Input
+            id="recuperar-correo"
             type="email"
             placeholder="martha@afrobroccoli.com"
             value={emailRecuperacion}
@@ -51,8 +53,7 @@ export default function LoginForm() {
 
         {enlaceEnviado ? (
           <p className="rounded-lg bg-primary/15 px-4 py-3 text-sm font-medium text-ink">
-            ✅ Listo. Revisá tu correo: te enviamos el enlace para
-            restablecer tu contraseña.
+            {t("✅ Listo. Revisá tu correo: te enviamos el enlace para restablecer tu contraseña.")}
           </p>
         ) : (
           <Button
@@ -63,7 +64,7 @@ export default function LoginForm() {
               }
             }}
           >
-            Enviar enlace
+            {t("Enviar enlace")}
           </Button>
         )}
 
@@ -74,7 +75,7 @@ export default function LoginForm() {
             setEnlaceEnviado(false);
           }}
         >
-          ← Volver a iniciar sesión
+          {t("← Volver a iniciar sesión")}
         </button>
       </div>
     );
@@ -84,28 +85,33 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="flex w-full max-w-md flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <h2 className="text-3xl font-bold">Iniciar sesión</h2>
-        <p className="text-sm text-muted">Entrá con tu cuenta del equipo</p>
+        <h2 className="text-3xl font-bold">{t("Iniciar sesión")}</h2>
+        <p className="text-sm text-muted">{t("Entrá con tu cuenta del equipo")}</p>
       </div>
 
       {estado === "error" && (
         <p className="rounded-lg bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
-          Correo o contraseña incorrectos. Verificá e intentá de nuevo.
+          {t("Correo o contraseña incorrectos. Verificá e intentá de nuevo.")}
         </p>
       )}
 
-      <Field label="Correo electrónico">
+      <Field label={t("Correo electrónico")} htmlFor="login-correo">
         <Input
+          id="login-correo"
           type="email"
+          autoComplete="email"
           placeholder="martha@afrobroccoli.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
       </Field>
 
-      <Field label="Contraseña">
+      <Field label={t("Contraseña")} htmlFor="login-password">
         <Input
+          id="login-password"
           type="password"
+          autoComplete="current-password"
+          name="password"
           placeholder="••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -117,15 +123,15 @@ export default function LoginForm() {
         className="self-end text-sm font-medium text-accent hover:underline"
         onClick={() => setPantalla("recuperar")}
       >
-        ¿Olvidaste tu contraseña?
+        {t("¿Olvidaste tu contraseña?")}
       </button>
 
       <Button type="submit" disabled={estado === "loading"}>
-        {estado === "loading" ? "Entrando…" : "Entrar"}
+        {estado === "loading" ? t("Entrando…") : t("Entrar")}
       </Button>
 
       <p className="text-center text-xs text-muted">
-        Tu rol se detecta automáticamente al iniciar sesión
+        {t("Tu rol se detecta automáticamente al iniciar sesión")}
       </p>
     </form>
   );

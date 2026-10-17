@@ -19,7 +19,7 @@ async function cargarLogo(): Promise<string> {
           .from("config")
           .select("logo_url")
           .eq("id", 1)
-          .single();
+          .maybeSingle();
         cache = data?.logo_url || LOGO_POR_DEFECTO;
       } catch {
         cache = LOGO_POR_DEFECTO;

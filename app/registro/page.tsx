@@ -1,4 +1,5 @@
 import { Logo } from "@/components/ui/logo";
+import { LanguageSwitch } from "@/components/i18n/language-switch";
 import { RegisterForm } from "@/components/qr/register-form";
 
 // Registro público: no requiere login (el proxy la deja pasar)
@@ -9,6 +10,7 @@ export default function RegistroPage() {
         <Logo alt="AfroBroccoli" width={72} height={72} className="rounded-2xl" />
         <h1 className="font-script text-4xl leading-tight">AfroBroccoli</h1>
         <p className="text-sm text-muted">Registrate para obtener tu tarjeta de cliente</p>
+        <LanguageSwitch variant="light" className="mt-2" />
       </div>
       <div className="w-full max-w-xl">
         <RegisterForm mostrarMembresia={false} />

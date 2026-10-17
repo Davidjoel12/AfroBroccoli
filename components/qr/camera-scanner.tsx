@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/components/i18n/language-provider";
 
 type Estado = "idle" | "camera" | "exito" | "error" | "no-soportado";
 type Mensaje = { tipo: "ok" | "no-encontrado" | "error"; texto: string } | null;
 
 export function CameraScanner() {
+  const t = useT();
   const [estado, setEstado] = useState<Estado>("idle");
   const [resultado, setResultado] = useState<string>("");
   const [mensaje, setMensaje] = useState<Mensaje>(null);
@@ -141,7 +143,7 @@ export function CameraScanner() {
               <circle cx="12" cy="13" r="4" />
             </svg>
           </span>
-          <h2 className="text-lg font-semibold leading-tight">Iniciar Cámara para escanear QR</h2>
+          <h2 className="text-lg font-semibold leading-tight">{t("Iniciar Cámara para escanear QR")}</h2>
         </div>
 
         {estado === "idle" && (
@@ -161,39 +163,39 @@ export function CameraScanner() {
           ) : (
             <video ref={videoRef} className="aspect-video w-full rounded-lg border border-ink/10 bg-black" playsInline muted />
           )}
-          <Button variant="subtle" onClick={() => { detener(); setFallback(false); setEstado("idle"); }}>Detener</Button>
+          <Button variant="subtle" onClick={() => { detener(); setFallback(false); setEstado("idle"); }}>{t("Detener")}</Button>
         </>
       )}
 
       {estado === "exito" && (
         <div className="flex flex-col gap-2">
           <p className="rounded-lg bg-primary/15 px-4 py-3 text-sm font-medium">
-            ✅ QR leído: <span className="break-all font-semibold">{resultado}</span>
+            {t("✅ QR leído:")} <span className="break-all font-semibold">{resultado}</span>
           </p>
           {mensaje && (
             <p className={`rounded-lg px-4 py-3 text-sm font-medium ${mensaje.tipo === "ok" ? "bg-primary/15" : "bg-pending/15"}`}>
               {mensaje.texto}
             </p>
           )}
-          <Button className="w-full sm:w-auto" onClick={() => { setEstado("idle"); setMensaje(null); }}>Escanear de nuevo</Button>
+          <Button className="w-full sm:w-auto" onClick={() => { setEstado("idle"); setMensaje(null); }}>{t("Escanear de nuevo")}</Button>
         </div>
       )}
 
       {estado === "error" && (
         <div className="flex flex-col gap-2">
           <p className="rounded-lg bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
-            No se pudo acceder a la cámara. Verificá los permisos o probá en otro navegador.
+            {t("No se pudo acceder a la cámara. Verificá los permisos o probá en otro navegador.")}
           </p>
-          <Button onClick={iniciar}>Reintentar</Button>
+          <Button onClick={iniciar}>{t("Reintentar")}</Button>
         </div>
       )}
 
       {estado === "no-soportado" && (
         <div className="flex flex-col gap-2">
           <p className="rounded-lg bg-pending/15 px-4 py-3 text-sm font-medium text-ink">
-            Este navegador no soporta escaneo nativo de QR (BarcodeDetector). Usá Chrome/Edge en móvil, o la búsqueda manual.
+            {t("Este navegador no soporta escaneo nativo de QR (BarcodeDetector). Usá Chrome/Edge en móvil, o la búsqueda manual.")}
           </p>
-          <Button variant="subtle" onClick={() => setEstado("idle")}>Volver</Button>
+          <Button variant="subtle" onClick={() => setEstado("idle")}>{t("Volver")}</Button>
         </div>
       )}
     </Card>

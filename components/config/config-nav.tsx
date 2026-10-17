@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useT } from "@/components/i18n/language-provider";
 
 const ITEMS = [
   {
@@ -32,6 +33,7 @@ const ITEMS = [
 
 export default function ConfigNav() {
   const pathname = usePathname();
+  const t = useT();
   const activa = (href: string) =>
     href === "/configuracion"
       ? pathname === "/configuracion"
@@ -56,7 +58,7 @@ export default function ConfigNav() {
                 : "border-ink/15 text-ink hover:border-ink/30",
             )}
           >
-            {item.label}
+            {t(item.label)}
           </Link>
         ))}
       </nav>
@@ -83,7 +85,7 @@ export default function ConfigNav() {
                 />
               )}
               <span className="shrink-0">{item.icon}</span>
-              {item.label}
+              {t(item.label)}
             </Link>
           ))}
         </nav>

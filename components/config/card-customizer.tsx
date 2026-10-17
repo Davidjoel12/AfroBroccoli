@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useUsuario } from "@/lib/use-usuario";
+import { useT } from "@/components/i18n/language-provider";
 import { cn } from "@/lib/utils";
 
 const ACENTOS = [
@@ -23,6 +24,7 @@ const CODIGO_CLIENTE = "AB-0042";
 const QR_URL = `https://app.afrobroccoli.com/c/${CODIGO_CLIENTE}`;
 
 export default function CardCustomizer() {
+  const t = useT();
   const [acento, setAcento] = useState(ACENTOS[0].hex);
   const [recompensa, setRecompensa] = useState("1 servicio gratis");
   const [meta, setMeta] = useState("5");
@@ -34,7 +36,7 @@ export default function CardCustomizer() {
   // Cargar la configuración guardada en Supabase
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("meta, color_acento, recompensa").eq("id", 1).single();
+      const { data } = await supabase.from("config").select("meta, color_acento, recompensa").eq("id", 1).maybeSingle();
       if (data) {
         setAcento(data.color_acento);
         setRecompensa(data.recompensa);
@@ -68,7 +70,7 @@ export default function CardCustomizer() {
     <div className="grid gap-5 xl:grid-cols-2">
       {/* Controles */}
       <Card>
-        <h2 className="text-xl font-semibold">Personalizar tarjeta</h2>
+        <h2 className="text-xl font-semibold">{t("Personalizar tarjeta")}</h2>
         <p className="mb-5 text-sm text-muted">
           Elegí el color de acento, la recompensa y la meta de sellos de tu programa.
         </p>
@@ -86,7 +88,7 @@ export default function CardCustomizer() {
             </p>
           )}
           <div>
-            <p className="mb-2 text-sm font-medium text-muted">Color de acento</p>
+            <p className="mb-2 text-sm font-medium text-muted">{t("Color de acento")}</p>
             <div className="flex gap-3">
               {ACENTOS.map((a) => (
                 <button
@@ -104,7 +106,7 @@ export default function CardCustomizer() {
             </div>
           </div>
 
-          <Field label="Recompensas">
+          <Field label={t("Recompensas")}>
             <Input
               value={recompensa}
               disabled={!esAdmin}
@@ -112,11 +114,11 @@ export default function CardCustomizer() {
               placeholder="Ej. 1 servicio gratis"
             />
             <span className="text-xs font-normal text-muted">
-              Aparece en la tarjeta como «por completar {meta} sellos».
+              {t("Aparece en la tarjeta como «por completar")} {meta} {t("sellos».")}
             </span>
           </Field>
 
-          <Field label="Meta de sellos">
+          <Field label={t("Meta de sellos")}>
             <select
               disabled={!esAdmin}
               className="h-11 rounded-lg border border-ink/20 bg-cream/50 px-3.5 text-ink focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
@@ -124,14 +126,14 @@ export default function CardCustomizer() {
               onChange={(e) => setMeta(e.target.value)}
             >
               {METAS.map((m) => (
-                <option key={m} value={m}>{m} sellos</option>
+                <option key={m} value={m}>{m} {t("sellos")}</option>
               ))}
             </select>
           </Field>
 
           {esAdmin && (
             <Button onClick={guardar} className="w-full sm:w-auto">
-              Guardar y aplicar
+              {t("Guardar y aplicar")}
             </Button>
           )}
         </div>
@@ -139,7 +141,7 @@ export default function CardCustomizer() {
 
       {/* Vista previa */}
       <Card className="flex flex-col items-center justify-center gap-4">
-        <h3 className="font-script text-2xl">Vista previa</h3>
+        <h3 className="font-script text-2xl">{t("Vista previa")}</h3>
         <div
           className="w-full max-w-xs rounded-[20px] p-5 text-cream shadow-xl"
           style={{ backgroundColor: "#221B19" }}
@@ -160,11 +162,11 @@ export default function CardCustomizer() {
               />
             ))}
           </div>
-          <p className="mt-2 text-xs text-muted-nav">Por completar {meta} sellos</p>
+          <p className="mt-2 text-xs text-muted-nav">{t("Por completar")} {meta} {t("sellos")}</p>
 
           <div className="mt-4 flex items-center justify-between gap-3 border-t border-cream/10 pt-3">
             <p className="min-w-0 flex-1 text-[11px] leading-snug text-muted-nav">
-              Código único del cliente
+              {t("Código único del cliente")}
               {/* <span className="block font-semibold text-cream">{CODIGO_CLIENTE}</span> */}
             </p>
             <div className="shrink-0 rounded-lg bg-white p-1.5">
