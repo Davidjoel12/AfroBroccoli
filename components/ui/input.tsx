@@ -1,18 +1,23 @@
 import { InputHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
+// Nota: antes esto era <label> envolviendo children. Eso rompe los menús
+// desplegables (un <button> dentro de un <label> recibe el click dos veces).
+// Ahora el texto es un <span> y se asocia con htmlFor cuando hay un input.
 export function Field({
   label,
+  htmlFor,
   children,
 }: {
   label: string;
+  htmlFor?: string;
   children: ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm font-medium text-muted">
-      {label}
+    <div className="flex flex-col gap-1.5 text-sm font-medium text-muted">
+      {htmlFor ? <label htmlFor={htmlFor}>{label}</label> : <span>{label}</span>}
       {children}
-    </label>
+    </div>
   );
 }
 

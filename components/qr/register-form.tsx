@@ -5,19 +5,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
+import { PAISES } from "@/lib/countries";
+import { SelectMenu } from "@/components/ui/select-menu";
 
-const CODIGOS_PAIS = ["+507", "+506", "+57", "+51", "+34", "+52", "+1", "+44", "Otro"];
-const NACIONALIDADES: { nombre: string; iso: string }[] = [
-  { nombre: "Panamá", iso: "pa" },
-  { nombre: "Costa Rica", iso: "cr" },
-  { nombre: "Venezuela", iso: "ve" },
-  { nombre: "Perú", iso: "pe" },
-  { nombre: "México", iso: "mx" },
-  { nombre: "Colombia", iso: "co" },
-  { nombre: "España", iso: "es" },
-  { nombre: "Estados Unidos", iso: "us" },
-  { nombre: "Otro", iso: "pa" },
-];
+const PREFIJOS_UNICOS = Array.from(
+  new Set(PAISES.map((p) => p.prefijo).filter((p): p is string => Boolean(p)))
+).sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
+
+const OPCIONES_PAIS = PAISES.map((p) => ({ value: p.iso, label: p.nombre }));
 
 export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: boolean }) {
   const [registrado, setRegistrado] = useState(false);
@@ -25,9 +20,9 @@ export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: b
   const [guardando, setGuardando] = useState(false);
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
-  const [codigoPais, setCodigoPais] = useState(CODIGOS_PAIS[0]);
+  const [codigoPais, setCodigoPais] = useState("+507");
   const [telefono, setTelefono] = useState("");
-  const [nacionalidad, setNacionalidad] = useState(NACIONALIDADES[0].nombre);
+  const [nacionalidad, setNacionalidad] = useState("pa");
   const [membresia, setMembresia] = useState(false);
 
   async function registrar(e: React.FormEvent) {
@@ -35,24 +30,21 @@ export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: b
     setGuardando(true);
     setError("");
 
-    const iso = NACIONALIDADES.find((n) => n.nombre === nacionalidad)?.iso ?? "pa";
+    const iso = nacionalidad;
     const codigo = `AB-${Math.floor(1000 + Math.random() * 9000)}`;
     const telefonoCompleto = `${codigoPais} ${telefono}`;
 
-    const { data: cliente, error: errCliente } = await supabase
+    // Sin .select(): el registro público no tiene permiso de lectura.
+    // La fila de sellos la crea el trigger trg_crear_sellos en la base.
+    const { error: errCliente } = await supabase
       .from("clientes")
-      .insert({ codigo, nombre, email: correo, telefono: telefonoCompleto, pais: iso, membresia })
-      .select("id")
-      .single();
+      .insert({ codigo, nombre, email: correo, telefono: telefonoCompleto, pais: iso, membresia });
 
-    if (errCliente || !cliente) {
+    if (errCliente) {
       setError("No se pudo registrar. Verificá los datos e intentá de nuevo.");
       setGuardando(false);
       return;
     }
-
-    // Fila de sellos en cero para el cliente nuevo
-    await supabase.from("sellos").insert({ cliente_id: cliente.id, cantidad: 0 });
 
     setGuardando(false);
     setRegistrado(true);
@@ -82,22 +74,26 @@ export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: b
 
       <form className="flex flex-col gap-4" onSubmit={registrar}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nombre completo">
-            <Input placeholder="Ej. Juan Pérez" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
+          <Field label="Nombre completo" htmlFor="cliente-nombre">
+            <Input id="cliente-nombre" placeholder="Ej. Juan Pérez" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
           </Field>
-          <Field label="Correo electrónico">
-            <Input type="email" placeholder="juang@email.com" value={correo} onChange={(e) => setCorreo(e.target.value)} required />
+          <Field label="Correo electrónico" htmlFor="cliente-correo">
+            <Input id="cliente-correo" type="email" placeholder="juang@email.com" value={correo} onChange={(e) => setCorreo(e.target.value)} required />
           </Field>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-[120px_1fr]">
           <Field label="Código de país">
-            <select value={codigoPais} onChange={(e) => setCodigoPais(e.target.value)} className="h-11 rounded-lg border border-ink/20 bg-white/50 px-3.5 text-ink focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none">
-              {CODIGOS_PAIS.map((c) => <option key={c}>{c}</option>)}
-            </select>
+            <SelectMenu
+              label="Código de país"
+              value={codigoPais}
+              onChange={setCodigoPais}
+              searchable
+              options={PREFIJOS_UNICOS.map((p) => ({ value: p, label: p }))}
+            />
           </Field>
-          <Field label="Número de teléfono">
-            <Input type="tel" placeholder="+507 6XXX XXXX" value={telefono} onChange={(e) => setTelefono(e.target.value)} required />
+          <Field label="Número de teléfono" htmlFor="cliente-telefono">
+            <Input id="cliente-telefono" type="tel" placeholder="+507 6XXX XXXX" value={telefono} onChange={(e) => setTelefono(e.target.value)} required />
           </Field>
         </div>
 
@@ -110,9 +106,13 @@ export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: b
             </div>
           </Field>
           <Field label="Nacionalidad">
-            <select value={nacionalidad} onChange={(e) => setNacionalidad(e.target.value)} className="h-11 rounded-lg border border-ink/20 bg-white/50 px-3.5 text-ink focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none">
-              {NACIONALIDADES.map((n) => <option key={n.nombre}>{n.nombre}</option>)}
-            </select>
+            <SelectMenu
+              label="Nacionalidad"
+              value={nacionalidad}
+              onChange={setNacionalidad}
+              searchable
+              options={OPCIONES_PAIS}
+            />
           </Field>
         </div>
 
