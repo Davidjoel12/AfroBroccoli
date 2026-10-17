@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { useT } from "@/components/i18n/language-provider";
 import type { Cliente } from "@/lib/types";
 import { PAISES } from "@/lib/countries";
 
@@ -33,6 +34,7 @@ function IconoBorrar() {
 // Acciones de admin: editar datos del cliente y eliminarlo
 export function AdminAcciones({ cliente, meta }: { cliente: Cliente; meta: number }) {
   const router = useRouter();
+  const t = useT();
   const [editando, setEditando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -79,8 +81,8 @@ export function AdminAcciones({ cliente, meta }: { cliente: Cliente; meta: numbe
         <button
           type="button"
           onClick={() => setEditando(true)}
-          aria-label={`Editar ${cliente.nombre}`}
-          title="Editar"
+          aria-label={`${t("Editar")} ${cliente.nombre}`}
+          title={t("Editar")}
           className="grid h-9 w-9 cursor-pointer place-items-center rounded-full border border-ink/15 text-ink transition-colors hover:border-primary/50 hover:bg-cream"
         >
           <IconoEditar />
@@ -88,8 +90,8 @@ export function AdminAcciones({ cliente, meta }: { cliente: Cliente; meta: numbe
         <button
           type="button"
           onClick={() => setConfirmando(true)}
-          aria-label={`Eliminar ${cliente.nombre}`}
-          title="Eliminar"
+          aria-label={`${t("Eliminar")} ${cliente.nombre}`}
+          title={t("Eliminar")}
           className="grid h-9 w-9 cursor-pointer place-items-center rounded-full border border-danger/30 text-danger transition-colors hover:bg-danger/10"
         >
           <IconoBorrar />
@@ -98,37 +100,38 @@ export function AdminAcciones({ cliente, meta }: { cliente: Cliente; meta: numbe
 
       {/* ===== Editar ===== */}
       {editando && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 px-4" onClick={() => setEditando(false)}>
+        // text-left: el modal vive dentro del <td> de Acciones (text-right) y heredaría esa alineación
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 px-4 text-left" onClick={() => setEditando(false)}>
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={`Editar ${cliente.nombre}`}
+            aria-label={`${t("Editar")} ${cliente.nombre}`}
             className="w-full max-w-md rounded-card bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold">Editar cliente</h3>
-            <p className="mt-1 text-sm text-muted">Los cambios se guardan al instante.</p>
+            <h3 className="text-lg font-semibold">{t("Editar cliente")}</h3>
+            <p className="mt-1 text-sm text-muted">{t("Los cambios se guardan al instante.")}</p>
 
             <div className="mt-5 flex flex-col gap-4">
-              <Field label="Nombre completo">
-                <Input value={nombre} onChange={(e) => setNombre(e.target.value)} />
+              <Field label={t("Nombre completo")} htmlFor={`nombre-${cliente.id}`}>
+                <Input id={`nombre-${cliente.id}`} value={nombre} onChange={(e) => setNombre(e.target.value)} />
               </Field>
-              <Field label="Correo electrónico">
-                <Input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} />
+              <Field label={t("Correo electrónico")} htmlFor={`correo-${cliente.id}`}>
+                <Input id={`correo-${cliente.id}`} type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} />
               </Field>
-              <Field label="Teléfono">
-                <Input type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+              <Field label={t("Teléfono")} htmlFor={`tel-${cliente.id}`}>
+                <Input id={`tel-${cliente.id}`} type="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
               </Field>
-              <Field label="País">
+              <Field label={t("País")}>
                 <SelectMenu
-                  label="País"
+                  label={t("País")}
                   value={pais}
                   onChange={setPais}
                   searchable
                   options={OPCIONES_PAIS}
                 />
               </Field>
-              <Field label="Sellos acumulados" htmlFor={`sellos-${cliente.id}`}>
+              <Field label={t("Sellos acumulados")} htmlFor={`sellos-${cliente.id}`}>
                 <Input
                   id={`sellos-${cliente.id}`}
                   inputMode="numeric"
@@ -137,15 +140,15 @@ export function AdminAcciones({ cliente, meta }: { cliente: Cliente; meta: numbe
                   onBlur={() => setSellos((v) => limitar(v))}
                 />
                 <span className="text-xs font-normal text-muted">
-                  Máximo {meta} sellos (meta definida en Configuración).
+                  {t("Máximo")} {meta} {t("sellos")} ({t("meta definida en Configuración")}).
                 </span>
               </Field>
             </div>
 
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button variant="subtle" onClick={() => setEditando(false)}>Cancelar</Button>
+              <Button variant="subtle" onClick={() => setEditando(false)}>{t("Cancelar")}</Button>
               <Button onClick={guardar} disabled={guardando}>
-                {guardando ? "Guardando…" : "Guardar cambios"}
+                {guardando ? t("Guardando…") : t("Guardar cambios")}
               </Button>
             </div>
           </div>
@@ -154,27 +157,28 @@ export function AdminAcciones({ cliente, meta }: { cliente: Cliente; meta: numbe
 
       {/* ===== Confirmar borrado ===== */}
       {confirmando && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 px-4" onClick={() => setConfirmando(false)}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 px-4 text-left" onClick={() => setConfirmando(false)}>
           <div
             role="alertdialog"
             aria-modal="true"
-            aria-label="Eliminar cliente"
+            aria-label={t("Eliminar cliente")}
             className="w-full max-w-md rounded-card bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold">Eliminar cliente</h3>
+            <h3 className="text-lg font-semibold">{t("Eliminar cliente")}</h3>
             <p className="mt-2 text-sm text-muted">
-              Vas a eliminar a <span className="font-semibold text-ink">{cliente.nombre}</span> junto
-              con su historial de visitas y sellos. Esta acción no se puede deshacer.
+              {t("Vas a eliminar a")}{" "}
+              <span className="font-semibold text-ink">{cliente.nombre}</span>{" "}
+              {t("junto con su historial de visitas y sellos. Esta acción no se puede deshacer.")}
             </p>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button variant="subtle" onClick={() => setConfirmando(false)}>Cancelar</Button>
+              <Button variant="subtle" onClick={() => setConfirmando(false)}>{t("Cancelar")}</Button>
               <Button
                 onClick={eliminar}
                 disabled={guardando}
                 className="!bg-danger !text-white hover:!bg-danger/90"
               >
-                {guardando ? "Eliminando…" : "Sí, eliminar"}
+                {guardando ? t("Eliminando…") : t("Sí, eliminar")}
               </Button>
             </div>
           </div>
