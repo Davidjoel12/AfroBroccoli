@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { ToggleMembresia } from "./toggle-membresia";
 import { AdminAcciones } from "./admin-acciones";
 import { useT } from "@/components/i18n/language-provider";
+import { enlaceTarjeta, enlaceWhatsapp, mensajeTarjeta } from "@/lib/config";
+import { cn } from "@/lib/utils";
 
 type Orden = "az" | "sellos" | "frecuentes";
 
@@ -27,18 +29,62 @@ function ordenar(clientes: Cliente[], orden: Orden): Cliente[] {
   }
 }
 
-function Sellos({ cliente }: { cliente: Cliente }) {
+function Sellos({ cliente, className }: { cliente: Cliente; className?: string }) {
   const t = useT();
   const porcentaje = Math.min(100, Math.round((cliente.sellos / cliente.metaSellos) * 100));
   return (
-    <div className="flex w-28 flex-col gap-1">
+    <div className={cn("flex w-28 flex-col gap-1", className)}>
       <div className="h-1.5 w-full rounded-full bg-gold/30">
         <div className="h-full rounded-full bg-gold" style={{ width: `${porcentaje}%` }} />
       </div>
       <span className="text-xs font-semibold text-muted">
-        {cliente.sellos}/{cliente.metaSellos} {t("sellos")}
+        {Math.min(cliente.sellos, cliente.metaSellos)}/{cliente.metaSellos} {t("sellos")}
       </span>
     </div>
+  );
+}
+
+/** Botón de WhatsApp: manda el mensaje y el link de la tarjeta del cliente. */
+function BotonWhatsapp({
+  cliente,
+  origen,
+  className,
+}: {
+  cliente: Cliente;
+  origen: string;
+  className?: string;
+}) {
+  const t = useT();
+  const etiqueta = `${t("Enviar tarjeta de")} ${cliente.nombre}`;
+  return (
+    <a
+      href={enlaceTarjetaDe(cliente, origen)}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={etiqueta}
+      title={etiqueta}
+      className={className}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12.04 2C6.58 2 2.15 6.43 2.15 11.89c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.23h.01c5.46 0 9.89-4.43 9.89-9.88 0-2.64-1.03-5.12-2.9-6.99A9.83 9.83 0 0 0 12.04 2Zm0 18.13h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.03-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.83 2.42a8.2 8.2 0 0 1 2.42 5.83c0 4.54-3.7 8.23-8.26 8.23Zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.12-.16.25-.64.81-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.12-.15.16-.25.25-.42.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.68 4.23 3.76.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.22-.17-.47-.29Z" />
+      </svg>
+    </a>
+  );
+}
+
+// Link de wa.me: saludo + progreso + tarjeta del cliente.
+// El logo de WhatsApp va dentro de la columna de acciones, pero el link se
+// followea en su propia pestaña, así que el grupo de acciones es un <div>, no
+// un <a>: anidar un enlace dentro de otro rompe la navegación.
+function enlaceTarjetaDe(cliente: Cliente, origen: string) {
+  return enlaceWhatsapp(
+    cliente.telefono,
+    mensajeTarjeta(
+      cliente.nombre,
+      cliente.sellos,
+      cliente.metaSellos,
+      cliente.codigo ? enlaceTarjeta(cliente.codigo, origen) : ""
+    )
   );
 }
 
@@ -69,7 +115,18 @@ function Bandera({ pais }: { pais: string | null }) {
 
 const POR_PAGINA = 10;
 
-export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { titulo: string; clientes: Cliente[]; esAdmin?: boolean; meta?: number }) {
+export function ClientsTable({
+  titulo,
+  clientes,
+  esAdmin = false,
+  origen,
+}: {
+  titulo: string;
+  clientes: Cliente[];
+  esAdmin?: boolean;
+  /** Origen del sitio (http://localhost:3000, el túnel, etc.) para los links de WhatsApp */
+  origen: string;
+}) {
   const [orden, setOrden] = useState<Orden>("az");
   const [pagina, setPagina] = useState(1);
   const t = useT();
@@ -114,60 +171,60 @@ export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { 
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-t border-ink/10 text-xs uppercase tracking-wide text-muted">
+                <tr className="border-t border-ink/15 text-xs uppercase tracking-wide text-muted">
                   <th className="px-6 py-3">{t("País")}</th>
                   <th className="py-3">{t("Cliente")}</th>
-                  <th className="py-3">{t("Sellos")}</th>
                   <th className="py-3">{t("Teléfono")}</th>
-                  <th className="py-3 pr-6 text-right">{t("WhatsApp")}</th>
                   {esAdmin && <th className="py-3 pr-6 text-right">{t("Membresía")}</th>}
-                  {esAdmin && <th className="py-3 pr-6 text-right">{t("Acciones")}</th>}
+                  {/* Una sola columna de acciones: el logo de WhatsApp convivía
+                      solo en una columna y empujaba el scroll horizontal. */}
+                  <th className="py-3 pr-6 text-right">{t("Acciones")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ink/5">
+              <tbody className="divide-y divide-ink/15">
                 {visibles.map((c) => (
-                  <tr key={c.correo} className="hover:bg-cream/40">
+                  <tr key={c.id} className="hover:bg-cream/40">
                     <td className="px-6 py-4"><Bandera pais={c.pais} /></td>
                     <td className="py-4">
                       <p className="font-medium">{c.nombre}</p>
                       <p className="text-xs text-muted">{c.correo}</p>
+                      {/* La barra de sellos va debajo del nombre, como en móvil:
+                          una columna menos y la ficha se lee en un solo bloque.
+                          En desktop tiene más ancho que en la columna angosta de antes. */}
+                      <div className="mt-2 w-36">
+                        <Sellos cliente={c} className="w-full" />
+                      </div>
                     </td>
-                    <td className="py-4"><Sellos cliente={c} /></td>
                     <td className="py-4 text-muted">{c.telefonoFormato}</td>
-                    <td className="py-4 pr-6 text-right">
-                      <a
-                        href={`https://wa.me/${c.telefono}?text=${encodeURIComponent(`Hola ${c.nombre}, te comparto tu tarjeta de cliente de AfroBroccoli 🥦`)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`${t("Enviar tarjeta de")} ${c.nombre}`}
-                        title={`${t("Enviar tarjeta de")} ${c.nombre}`}
-                        className="inline-grid h-9 w-9 place-items-center rounded-full bg-primary text-ink transition-colors hover:bg-primary/90"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12.04 2C6.58 2 2.15 6.43 2.15 11.89c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.23h.01c5.46 0 9.89-4.43 9.89-9.88 0-2.64-1.03-5.12-2.9-6.99A9.83 9.83 0 0 0 12.04 2Zm0 18.13h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.03-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.83 2.42a8.2 8.2 0 0 1 2.42 5.83c0 4.54-3.7 8.23-8.26 8.23Zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.12-.16.25-.64.81-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.12-.15.16-.25.25-.42.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.68 4.23 3.76.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.22-.17-.47-.29Z" />
-                        </svg>
-                      </a>
-                    </td>
                     {esAdmin && (
                       <td className="py-4 pr-6 text-right">
                         <ToggleMembresia clienteId={c.id} membresia={c.membresia} />
                       </td>
                     )}
-                    {esAdmin && (
-                      <td className="py-4 pr-6 text-right">
-                        <AdminAcciones cliente={c} meta={meta} />
-                      </td>
-                    )}
+                    <td className="py-4 pr-6">
+                      <div className="flex items-center justify-end gap-2">
+                        <BotonWhatsapp
+                          cliente={c}
+                          origen={origen}
+                          className="inline-grid h-9 w-9 place-items-center rounded-full bg-primary text-ink transition-colors hover:bg-primary/90"
+                        />
+                        {esAdmin && <AdminAcciones cliente={c} />}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {/* ===== Filas de tarjeta (móvil) ===== */}
-          <ul className="divide-y divide-ink/5 md:hidden">
+          {/* ===== Filas de tarjeta (móvil) =====
+              Un solo divisor, y fuerte (ink/15), separa cliente de cliente.
+              Los botones de admin van dentro del bloque del cliente, sin línea
+              propia: antes había un segundo gris parecido y no se sabía qué
+              línea separaba a quién. */}
+          <ul className="divide-y divide-ink/15 md:hidden">
             {visibles.map((c) => (
-              <li key={c.correo} className="flex flex-col gap-3 p-4">
+              <li key={c.id} className="flex flex-col gap-3 p-4">
                 <div className="flex items-center gap-3">
                   <Bandera pais={c.pais} />
                   <div className="min-w-0 flex-1">
@@ -175,17 +232,11 @@ export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { 
                     <p className="truncate text-xs text-muted">{c.correo}</p>
                     <p className="truncate text-xs text-muted">{c.telefonoFormato}</p>
                   </div>
-                  <a
-                    href={`https://wa.me/${c.telefono}?text=${encodeURIComponent(`Hola ${c.nombre}, te comparto tu tarjeta de cliente de AfroBroccoli 🥦`)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`${t("Enviar tarjeta de")} ${c.nombre}`}
+                  <BotonWhatsapp
+                    cliente={c}
+                    origen={origen}
                     className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-ink"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12.04 2C6.58 2 2.15 6.43 2.15 11.89c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.23h.01c5.46 0 9.89-4.43 9.89-9.88 0-2.64-1.03-5.12-2.9-6.99A9.83 9.83 0 0 0 12.04 2Zm0 18.13h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.03-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.83 2.42a8.2 8.2 0 0 1 2.42 5.83c0 4.54-3.7 8.23-8.26 8.23Zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.12-.16.25-.64.81-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.12-.15.16-.25.25-.42.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.68 4.23 3.76.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.22-.17-.47-.29Z" />
-                    </svg>
-                  </a>
+                  />
                 </div>
 
                 <div className="pl-11">
@@ -193,11 +244,9 @@ export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { 
                 </div>
 
                 {esAdmin && (
-                  <div className="border-t border-ink/10 pt-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3 pl-11">
-                      <ToggleMembresia clienteId={c.id} membresia={c.membresia} />
-                      <AdminAcciones cliente={c} meta={meta} />
-                    </div>
+                  <div className="flex flex-wrap items-center justify-between gap-3 pl-11">
+                    <ToggleMembresia clienteId={c.id} membresia={c.membresia} />
+                    <AdminAcciones cliente={c} />
                   </div>
                 )}
               </li>
@@ -208,7 +257,7 @@ export function ClientsTable({ titulo, clientes, esAdmin = false, meta = 5 }: { 
           {totalPaginas > 1 && (
             <nav
               aria-label={`Paginación de ${titulo}`}
-              className="flex items-center justify-between gap-3 border-t border-ink/10 p-4"
+              className="flex items-center justify-between gap-3 border-t border-ink/15 p-4"
             >
               <button
                 type="button"

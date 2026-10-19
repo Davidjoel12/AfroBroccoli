@@ -1,14 +1,13 @@
-import Link from "next/link";
-import Image from "next/image";
-import { buttonVariants } from "@/components/ui/button";
+import { headers } from "next/headers";
 import { Card } from "@/components/ui/card";
 import { MetricCard } from "@/components/home/metric-card";
-import { VisitsChart, DistributionChart } from "@/components/home/charts";
+import { VisitsChart } from "@/components/home/charts";
 import { ClientsTable } from "@/components/home/clients-table";
 import { WelcomeCard, DistributionCard } from "@/components/home/home-blocks";
 import { construirSeriesVisitas } from "@/lib/data";
 import { createClient } from "@/lib/supabase-server";
 import { Cliente } from "@/lib/types";
+import { leerConfigTarjeta, metaDeCliente } from "@/lib/config";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -23,19 +22,15 @@ export default async function Home() {
 
   const { data: clientesData } = await supabase
     .from("clientes")
-    .select("id, nombre, email, pais, telefono, membresia, sellos(cantidad)");
+    .select("id, codigo, nombre, email, pais, telefono, membresia, sellos(cantidad)");
 
   const { data: visitasData } = await supabase
     .from("visitas")
     .select("created_at, cliente_id, clientes(membresia)");
 
-  const { data: configData } = await supabase
-    .from("config")
-    .select("meta, logo_url")
-    .eq("id", 1)
-    .single();
-  const metaGlobal = configData?.meta ?? 5;
-  const logoUrl = configData?.logo_url ?? null;
+  // Config de la tarjeta: cada tipo de cliente tiene su meta (regular / miembro)
+  const config = await leerConfigTarjeta(supabase);
+  const logoUrl = config.logoUrl;
 
   const visitasPorCliente = new Map<string, number>();
   for (const v of visitasData ?? []) {
@@ -50,13 +45,14 @@ export default async function Home() {
     const telefono = (c.telefono ?? "").replace(/[^\d]/g, "");
     return {
       id: c.id,
+      codigo: c.codigo ?? "",
       nombre: c.nombre,
       correo: c.email ?? "",
       pais: c.pais ?? null,
       telefono,
       telefonoFormato: c.telefono ?? "",
       sellos,
-      metaSellos: metaGlobal,
+      metaSellos: metaDeCliente(c.membresia, config),
       membresia: c.membresia,
       visitas: visitasPorCliente.get(c.id) ?? 0,
     };
@@ -83,6 +79,14 @@ export default async function Home() {
     return { created_at: v.created_at, membresia: membresiaJoin ?? false };
   });
   const series = construirSeriesVisitas(visitasParaSerie);
+
+  // Origen real del sitio (localhost, túnel de pruebas o Vercel): se usa para armar
+  // el link de la tarjeta del cliente que va en el mensaje de WhatsApp. Se resuelve
+  // acá en el servidor para que el HTML del servidor y el del navegador coincidan.
+  const cab = await headers();
+  const host = cab.get("x-forwarded-host") ?? cab.get("host") ?? "localhost:3000";
+  const proto = cab.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const origen = `${proto}://${host}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,8 +124,8 @@ export default async function Home() {
       {/* 2 columnas solo a partir de 1536px: con menos ancho la tabla de 7 columnas
           se cortaba y obligaba a scrollear dentro de la tarjeta */}
       <div className="grid gap-6 2xl:grid-cols-2">
-        <ClientsTable titulo="Clientes regulares" clientes={regulares} esAdmin={esAdmin} meta={metaGlobal} />
-        <ClientsTable titulo="Clientes membresía" clientes={membresia} esAdmin={esAdmin} meta={metaGlobal} />
+        <ClientsTable titulo="Clientes regulares" clientes={regulares} esAdmin={esAdmin} origen={origen} />
+        <ClientsTable titulo="Clientes membresía" clientes={membresia} esAdmin={esAdmin} origen={origen} />
       </div>
     </div>
   );

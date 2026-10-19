@@ -72,7 +72,6 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Teléfono": "Phone",
   "WhatsApp": "WhatsApp",
   "Acciones": "Actions",
-  "sellos": "stamps",
   "No hay clientes en esta categoría.": "No clients in this category.",
   "Editar": "Edit",
   "Eliminar": "Delete",
@@ -130,10 +129,16 @@ export const DICCIONARIO_EN: Record<string, string> = {
     "I agree to the personal data treatment under Panama's Law 81.",
   "No se pudo registrar. Verificá los datos e intentá de nuevo.":
     "Couldn't register. Check the details and try again.",
+  "✅ ¡Listo! Este es tu código de cliente. Te llevamos a tu tarjeta.":
+    "✅ All done! Here's your client code. Taking you to your card.",
+  "Ver mi tarjeta ahora ↗": "See my card now ↗",
+  "Código": "Code",
   "Día": "Day",
   "Mes": "Month",
   "Año": "Year",
   "No se encontraron clientes para": "No clients found for",
+  "No se pudo buscar. Revisá tu conexión e intentá de nuevo.":
+    "Couldn't search. Check your connection and try again.",
   "Verificá el nombre, teléfono o correo.": "Check the name, phone or email.",
   "Buscar por nombre, teléfono o correo": "Search by name, phone or email",
   "Este navegador no soporta escaneo nativo de QR (BarcodeDetector). Usá Chrome/Edge en móvil, o la búsqueda manual.":
@@ -154,20 +159,43 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Recompensas": "Rewards",
   "Meta de sellos": "Stamp goal",
   "Guardar y aplicar": "Save and apply",
-  "Vista previa": "Preview",
-  "Por completar": "To complete",
-  "Aparece en la tarjeta como «por completar": "It shows on the card as «to complete",
-  "sellos».": "stamps».",
-  "Código único del cliente": "Client's unique code",
   "Los datos del negocio los administra el administrador del salón. Preguntale a la dueña si necesitás cambiar algo.":
     "Business details are managed by the salon admin. Ask the owner if you need something changed.",
   "Tu nombre": "Your name",
   "Tu correo": "Your email",
+  "Elegí el color de acento y la recompensa de tu programa. Cada tipo de cliente tiene su propia meta de sellos.":
+    "Pick your accent color and your rewards. Each client type has its own stamp goal.",
+  "✅ Tarjeta de cliente actualizada.": "✅ Client card updated.",
+  "No se pudieron guardar los cambios. Intentá de nuevo.":
+    "Couldn't save the changes. Try again.",
+  "Se guardó, pero falta aplicar la migración en Supabase para poder separar la meta y la recompensa de los clientes miembros.":
+    "Saved, but the Supabase migration is still missing, so the member clients' goal and reward can't be split yet.",
   "Solo el administrador puede modificar la tarjeta. Estás viendo la configuración actual.":
     "Only the admin can modify the card. You're seeing the current settings.",
+  "Ej. 1 servicio gratis": "E.g. 1 free service",
+  "Clientes miembros": "Member clients",
+  "Así ve su tarjeta el cliente": "This is how the client sees their card",
+  "Es la misma tarjeta que el cliente abre desde el link de WhatsApp.":
+    "This is the exact card the client opens from the WhatsApp link.",
+  "Tarjeta de ejemplo con datos ficticios. La de cada cliente se arma sola con su nombre, su código y sus sellos.":
+    "Example card with made-up details. Each client's is built automatically from their name, code and stamps.",
   "Máximo": "Max",
-  "sellos (meta definida en Configuración).": "stamps (goal set in Settings).",
   "meta definida en Configuración": "goal set in Settings",
+
+  // ===== Tarjeta del cliente (pública) =====
+  "Miembro": "Member",
+  "Tu código único": "Your unique code",
+  "Por completar": "To complete",
+  "¡Recompensa lista! Passé por el salón a canjearla.":
+    "Your reward is ready! Stop by the salon to redeem it.",
+  "Tu tarjeta de cliente": "Your client card",
+  "No encontramos esa tarjeta": "We couldn't find that card",
+  "Revisá el link que te pasamos o pedile al salón que te lo reenvíe.":
+    "Check the link we sent you, or ask the salon to send it again.",
+  "Mostrá este código en el salón para sumar tus sellos.":
+    "Show this code at the salon to add your stamps.",
+  "sello": "stamp",
+  "sellos": "stamps",
 };
 
 export type Idioma = "es" | "en";

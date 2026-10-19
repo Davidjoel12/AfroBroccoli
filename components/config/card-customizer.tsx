@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useUsuario } from "@/lib/use-usuario";
 import { useT } from "@/components/i18n/language-provider";
+import { TarjetaCliente } from "@/components/card/tarjeta-cliente";
+import {
+  guardarConfigTarjeta,
+  leerConfigTarjeta,
+  rutaTarjeta,
+  METAS,
+  type ConfigTarjeta,
+} from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 const ACENTOS = [
@@ -17,54 +24,61 @@ const ACENTOS = [
   { nombre: "Menta", hex: "#85D2CA" },
 ];
 
-const METAS = ["4", "5", "8", "10"];
+// Datos fijos de la vista previa. El código "AB-0000" no lo genera nunca el
+// formulario de registro (que saca entre AB-1000 y AB-9999), así que el QR
+// de la vista previa no lleva a ninguna tarjeta real.
+const EJEMPLO = { nombre: "Swanny", codigo: "AB-0000", sellos: 2 };
 
-// Código único del cliente — mock; el backend lo generará por cliente.
-const CODIGO_CLIENTE = "AB-0042";
-const QR_URL = `https://app.afrobroccoli.com/c/${CODIGO_CLIENTE}`;
+const selectClases =
+  "h-11 w-full cursor-pointer rounded-lg border border-ink/20 bg-cream/50 px-3.5 text-ink focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60";
 
 export default function CardCustomizer() {
   const t = useT();
-  const [acento, setAcento] = useState(ACENTOS[0].hex);
-  const [recompensa, setRecompensa] = useState("1 servicio gratis");
-  const [meta, setMeta] = useState("5");
+  const [config, setConfig] = useState<ConfigTarjeta | null>(null);
   const [guardado, setGuardado] = useState(false);
-  const [qr, setQr] = useState<string>("");
+  const [error, setError] = useState("");
+  const [aviso, setAviso] = useState("");
   const { usuario } = useUsuario();
   const esAdmin = usuario?.role === "admin";
 
   // Cargar la configuración guardada en Supabase
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("config").select("meta, color_acento, recompensa").eq("id", 1).maybeSingle();
-      if (data) {
-        setAcento(data.color_acento);
-        setRecompensa(data.recompensa);
-        setMeta(String(data.meta));
-      }
+      setConfig(await leerConfigTarjeta(supabase));
     })();
   }, []);
 
   async function guardar() {
-    const { error } = await supabase
-      .from("config")
-      .update({ meta: Number(meta), color_acento: acento, recompensa })
-      .eq("id", 1);
-    if (!error) setGuardado(true);
+    if (!config) return;
+    setError("");
+    setAviso("");
+    const r = await guardarConfigTarjeta(supabase, config);
+    if (!r.ok) {
+      setGuardado(false);
+      setError(t("No se pudieron guardar los cambios. Intentá de nuevo."));
+      return;
+    }
+    setGuardado(true);
+    if (r.parcial) {
+      setAviso(
+        t(
+          "Se guardó, pero falta aplicar la migración en Supabase para poder separar la meta y la recompensa de los clientes miembros."
+        )
+      );
+    }
   }
 
-  useEffect(() => {
-    QRCode.toDataURL(QR_URL, {
-      width: 160,
-      margin: 1,
-      color: { dark: "#221B19", light: "#FFFFFF" },
-    })
-      .then(setQr)
-      .catch(() => setQr(""));
-  }, []);
+  // While loading, show a skeleton-ish preview rather than fake data
+  const accent = config?.colorAcento ?? "#FF66C4";
+  const meta = config?.meta ?? 5;
+  const metaMembresia = config?.metaMembresia ?? 5;
+  const recompensa = config?.recompensa ?? "1 servicio gratis";
+  const recompensaMembresia = config?.recompensaMembresia ?? "1 servicio gratis";
 
-  const sellos = Number(meta);
-  const completados = Math.min(3, sellos);
+  function actualizar(parcial: Partial<ConfigTarjeta>) {
+    setConfig((prev) => (prev ? { ...prev, ...parcial } : prev));
+    setGuardado(false);
+  }
 
   return (
     <div className="grid gap-5 xl:grid-cols-2">
@@ -72,33 +86,48 @@ export default function CardCustomizer() {
       <Card>
         <h2 className="text-xl font-semibold">{t("Personalizar tarjeta")}</h2>
         <p className="mb-5 text-sm text-muted">
-          Elegí el color de acento, la recompensa y la meta de sellos de tu programa.
+          {t("Elegí el color de acento y la recompensa de tu programa. Cada tipo de cliente tiene su propia meta de sellos.")}
         </p>
 
         {guardado && (
           <p className="mb-4 rounded-lg bg-primary/15 px-4 py-3 text-sm font-medium">
-            ✅ Tarjeta de cliente actualizada.
+            {t("✅ Tarjeta de cliente actualizada.")}
+          </p>
+        )}
+
+        {error && (
+          <p className="mb-4 rounded-lg bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
+            {error}
+          </p>
+        )}
+
+        {aviso && (
+          <p className="mb-4 rounded-lg bg-pending/15 px-4 py-3 text-sm font-medium text-ink">
+            {aviso}
           </p>
         )}
 
         <div className="flex flex-col gap-5">
           {!esAdmin && usuario && (
             <p className="rounded-lg bg-pending/15 px-4 py-3 text-sm font-medium">
-              Solo el administrador puede modificar la tarjeta. Estás viendo la configuración actual.
+              {t("Solo el administrador puede modificar la tarjeta. Estás viendo la configuración actual.")}
             </p>
           )}
+
           <div>
             <p className="mb-2 text-sm font-medium text-muted">{t("Color de acento")}</p>
             <div className="flex gap-3">
               {ACENTOS.map((a) => (
                 <button
                   key={a.hex}
+                  type="button"
                   aria-label={a.nombre}
+                  aria-pressed={accent === a.hex}
                   disabled={!esAdmin}
-                  onClick={() => setAcento(a.hex)}
+                  onClick={() => actualizar({ colorAcento: a.hex })}
                   className={cn(
                     "h-8 w-8 cursor-pointer rounded-full transition-transform hover:scale-110 disabled:cursor-not-allowed disabled:opacity-60",
-                    acento === a.hex && "scale-110 ring-2 ring-ink/40",
+                    accent === a.hex && "scale-110 ring-2 ring-ink/40",
                   )}
                   style={{ backgroundColor: a.hex }}
                 />
@@ -106,82 +135,100 @@ export default function CardCustomizer() {
             </div>
           </div>
 
-          <Field label={t("Recompensas")}>
-            <Input
-              value={recompensa}
-              disabled={!esAdmin}
-              onChange={(e) => setRecompensa(e.target.value)}
-              placeholder="Ej. 1 servicio gratis"
-            />
-            <span className="text-xs font-normal text-muted">
-              {t("Aparece en la tarjeta como «por completar")} {meta} {t("sellos».")}
-            </span>
-          </Field>
+          {/* --- Cliente regular --- */}
+          <fieldset
+            disabled={!esAdmin}
+            className="flex flex-col gap-4 rounded-card bg-cream/60 p-4 disabled:opacity-90"
+          >
+            <legend className="px-1 text-sm font-semibold text-ink">
+              {t("Clientes regulares")}
+            </legend>
 
-          <Field label={t("Meta de sellos")}>
-            <select
-              disabled={!esAdmin}
-              className="h-11 rounded-lg border border-ink/20 bg-cream/50 px-3.5 text-ink focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-              value={meta}
-              onChange={(e) => setMeta(e.target.value)}
-            >
-              {METAS.map((m) => (
-                <option key={m} value={m}>{m} {t("sellos")}</option>
-              ))}
-            </select>
-          </Field>
+            <Field label={t("Recompensas")}>
+              <Input
+                value={recompensa}
+                onChange={(e) => actualizar({ recompensa: e.target.value })}
+                placeholder={t("Ej. 1 servicio gratis")}
+              />
+            </Field>
+
+            <Field label={t("Meta de sellos")}>
+              <select
+                className={selectClases}
+                value={String(meta)}
+                onChange={(e) => actualizar({ meta: Number(e.target.value) })}
+              >
+                {METAS.map((m) => (
+                  <option key={m} value={m}>
+                    {m} {t("sellos")}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </fieldset>
+
+          {/* --- Cliente miembro --- */}
+          <fieldset
+            disabled={!esAdmin}
+            className="flex flex-col gap-4 rounded-card bg-cream/60 p-4 disabled:opacity-90"
+          >
+            <legend className="px-1 text-sm font-semibold text-ink">
+              {t("Clientes miembros")}
+            </legend>
+
+            <Field label={t("Recompensas")}>
+              <Input
+                value={recompensaMembresia}
+                onChange={(e) => actualizar({ recompensaMembresia: e.target.value })}
+                placeholder={t("Ej. 1 servicio gratis")}
+              />
+            </Field>
+
+            <Field label={t("Meta de sellos")}>
+              <select
+                className={selectClases}
+                value={String(metaMembresia)}
+                onChange={(e) => actualizar({ metaMembresia: Number(e.target.value) })}
+              >
+                {METAS.map((m) => (
+                  <option key={m} value={m}>
+                    {m} {t("sellos")}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </fieldset>
 
           {esAdmin && (
-            <Button onClick={guardar} className="w-full sm:w-auto">
+            <Button onClick={guardar} disabled={!config} className="w-full sm:w-auto">
               {t("Guardar y aplicar")}
             </Button>
           )}
         </div>
       </Card>
 
-      {/* Vista previa */}
-      <Card className="flex flex-col items-center justify-center gap-4">
-        <h3 className="font-script text-2xl">{t("Vista previa")}</h3>
-        <div
-          className="w-full max-w-xs rounded-[20px] p-5 text-cream shadow-xl"
-          style={{ backgroundColor: "#221B19" }}
-        >
-          <div className="mb-3 h-2 w-full rounded-full" style={{ backgroundColor: acento }} />
-          <p className="font-script text-3xl leading-tight">AfroBroccoli</p>
-          <p className="mt-1 text-sm text-muted-nav">{recompensa}</p>
-
-          <div className="mt-4 flex flex-wrap items-center gap-1.5">
-            {Array.from({ length: sellos }).map((_, i) => (
-              <span
-                key={i}
-                className="h-4 w-4 rounded-full"
-                style={{
-                  backgroundColor:
-                    i < completados ? acento : "rgba(255,248,238,0.2)",
-                }}
-              />
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-muted-nav">{t("Por completar")} {meta} {t("sellos")}</p>
-
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-cream/10 pt-3">
-            <p className="min-w-0 flex-1 text-[11px] leading-snug text-muted-nav">
-              {t("Código único del cliente")}
-              {/* <span className="block font-semibold text-cream">{CODIGO_CLIENTE}</span> */}
-            </p>
-            <div className="shrink-0 rounded-lg bg-white p-1.5">
-              {qr ? (
-                <img
-                  src={qr}
-                  alt={`Código QR único del cliente ${CODIGO_CLIENTE}`}
-                  className="h-14 w-14"
-                />
-              ) : (
-                <div className="h-14 w-14 animate-pulse rounded bg-ink/10" />
-              )}
-            </div>
-          </div>
+      {/* Vista previa: exactamente la tarjeta que recibe el cliente */}
+      <Card className="flex flex-col items-center gap-4">
+        <div className="w-full">
+          <h3 className="font-script text-2xl">{t("Así ve su tarjeta el cliente")}</h3>
+          <p className="mt-1 text-sm text-muted">
+            {t("Es la misma tarjeta que el cliente abre desde el link de WhatsApp.")}
+          </p>
         </div>
+
+        <TarjetaCliente
+          nombre={EJEMPLO.nombre}
+          codigo={EJEMPLO.codigo}
+          sellos={EJEMPLO.sellos}
+          meta={meta}
+          recompensa={recompensa}
+          colorAcento={accent}
+          url={rutaTarjeta(EJEMPLO.codigo)}
+        />
+
+        <p className="text-center text-xs text-muted">
+          {t("Tarjeta de ejemplo con datos ficticios. La de cada cliente se arma sola con su nombre, su código y sus sellos.")}
+        </p>
       </Card>
     </div>
   );

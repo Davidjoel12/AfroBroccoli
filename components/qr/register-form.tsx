@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { PAISES } from "@/lib/countries";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useT } from "@/components/i18n/language-provider";
+import { rutaTarjeta } from "@/lib/config";
 
 const PREFIJOS_UNICOS = Array.from(
   new Set(PAISES.map((p) => p.prefijo).filter((p): p is string => Boolean(p)))
@@ -15,17 +17,41 @@ const PREFIJOS_UNICOS = Array.from(
 
 const OPCIONES_PAIS = PAISES.map((p) => ({ value: p.iso, label: p.nombre }));
 
-export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: boolean }) {
+/**
+ * Formulario de registro de clientes.
+ *
+ * `redirigir` solo se activa en el registro público (/registro, el que escanea
+ * la clienta por su cuenta): ahí, al terminar, va directo a su tarjeta. En el
+ * /qr del salón NO se redirige, porque el staff tiene que seguir ahí para
+ * registrar más clientes, verlos o escanearlos.
+ */
+export function RegisterForm({
+  mostrarMembresia = true,
+  redirigir = false,
+}: {
+  mostrarMembresia?: boolean;
+  redirigir?: boolean;
+}) {
   const t = useT();
+  const router = useRouter();
   const [registrado, setRegistrado] = useState(false);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [codigoNuevo, setCodigoNuevo] = useState("");
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
   const [codigoPais, setCodigoPais] = useState("+507");
   const [telefono, setTelefono] = useState("");
   const [nacionalidad, setNacionalidad] = useState("pa");
   const [membresia, setMembresia] = useState(false);
+
+  // Autoregistro: al terminar, la clienta pasa a su propia tarjeta (/c/AB-0000).
+  // El aviso de "registrado" queda un instante para que vea que salió bien.
+  useEffect(() => {
+    if (!redirigir || !registrado || !codigoNuevo) return;
+    const timer = setTimeout(() => router.push(rutaTarjeta(codigoNuevo)), 900);
+    return () => clearTimeout(timer);
+  }, [redirigir, registrado, codigoNuevo, router]);
 
   async function registrar(e: React.FormEvent) {
     e.preventDefault();
@@ -50,6 +76,7 @@ export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: b
 
     setGuardando(false);
     setRegistrado(true);
+    setCodigoNuevo(codigo);
     setNombre("");
     setCorreo("");
     setTelefono("");
@@ -63,9 +90,26 @@ export function RegisterForm({ mostrarMembresia = true }: { mostrarMembresia?: b
       </p>
 
       {registrado && (
-        <p className="mb-4 rounded-lg bg-primary/15 px-4 py-3 text-sm font-medium">
-          {t("✅ ¡Cliente registrado! Ya puede escanear el QR para entrar.")}
-        </p>
+        <div className="mb-4 rounded-lg bg-primary/15 px-4 py-3 text-sm font-medium">
+          <p>
+            {redirigir
+              ? t("✅ ¡Listo! Este es tu código de cliente. Te llevamos a tu tarjeta.")
+              : t("✅ ¡Cliente registrado! Ya puede escanear el QR para entrar.")}
+          </p>
+          {codigoNuevo && (
+            <p className="mt-1 text-xs text-muted">
+              {t("Código")} <span className="font-semibold text-ink">{codigoNuevo}</span>
+            </p>
+          )}
+          {redirigir && codigoNuevo && (
+            <a
+              href={rutaTarjeta(codigoNuevo)}
+              className="mt-2 inline-block font-semibold text-primary hover:underline"
+            >
+              {t("Ver mi tarjeta ahora ↗")}
+            </a>
+          )}
+        </div>
       )}
 
       {error && (

@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+// Rutas públicas: login, registro por QR y la tarjeta del cliente (/c/AB-0042).
+const RUTAS_PUBLICAS = ["/login", "/registro", "/c/"];
+
 // Redirige a /login si no hay sesión activa; y de /login a / si ya hay sesión.
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -27,21 +30,23 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() valida el JWT de la cookie contra las llaves públicas del
+  // proyecto: no hace un request a la red en cada navegación (getUser() sí lo
+  // hacía, y con eso el rate limit de Supabase terminaba expulsando a la gente
+  // a /login al moverse por el menú). Si el token está por vencer, refresca solo.
+  const claims = (await supabase.auth.getClaims()).data?.claims ?? null;
+  const haySesion = Boolean(claims);
 
-  const esLogin = request.nextUrl.pathname.startsWith("/login");
-  // Rutas públicas: login y el formulario de auto-registro por QR
-  const esPublica = esLogin || request.nextUrl.pathname.startsWith("/registro");
+  const ruta = request.nextUrl.pathname;
+  const esPublica = RUTAS_PUBLICAS.some((p) => ruta.startsWith(p));
 
-  if (!user && !esPublica) {
+  if (!haySesion && !esPublica) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && esLogin) {
+  if (haySesion && ruta.startsWith("/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

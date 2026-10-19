@@ -31,13 +31,29 @@ function IconoBorrar() {
   );
 }
 
+/** Lo mínimo que el modal necesita para editar o borrar un cliente. */
+export type ClienteEditable = Pick<
+  Cliente,
+  "id" | "nombre" | "correo" | "telefonoFormato" | "pais" | "sellos" | "metaSellos"
+>;
+
 // Acciones de admin: editar datos del cliente y eliminarlo
-export function AdminAcciones({ cliente, meta }: { cliente: Cliente; meta: number }) {
+export function AdminAcciones({
+  cliente,
+  onChanged,
+}: {
+  cliente: ClienteEditable;
+  /** Se dispara al guardar o al borrar, para que quien lo muestra actualice su lista. */
+  onChanged?: (accion: "guardar" | "eliminar", clienteId: string) => void;
+}) {
   const router = useRouter();
   const t = useT();
   const [editando, setEditando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+
+  // La meta depende del tipo de cliente (regular o miembro)
+  const meta = cliente.metaSellos;
 
   const [nombre, setNombre] = useState(cliente.nombre);
   const [correo, setCorreo] = useState(cliente.correo);
@@ -64,6 +80,7 @@ export function AdminAcciones({ cliente, meta }: { cliente: Cliente; meta: numbe
       .upsert({ cliente_id: cliente.id, cantidad, updated_at: new Date().toISOString() });
     setGuardando(false);
     setEditando(false);
+    onChanged?.("guardar", cliente.id);
     router.refresh();
   }
 
@@ -72,6 +89,7 @@ export function AdminAcciones({ cliente, meta }: { cliente: Cliente; meta: numbe
     await supabase.from("clientes").delete().eq("id", cliente.id);
     setGuardando(false);
     setConfirmando(false);
+    onChanged?.("eliminar", cliente.id);
     router.refresh();
   }
 
