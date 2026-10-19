@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { leerConfigTarjeta, metaDeCliente, recompensaDeCliente } from "@/lib/config";
+import { abrirCamaraTrasera, constraintsCamaraTrasera } from "@/lib/camara";
 import { useT } from "@/components/i18n/language-provider";
 
 type Estado = "idle" | "camera" | "exito" | "error" | "no-soportado";
@@ -18,7 +20,28 @@ export function CameraScanner() {
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [fallback, setFallback] = useState(false);
-  const html5Ref = useRef<{ stop: () => Promise<void> } | null>(null);
+  const html5Ref = useRef<{ stop: () => Promise<void>; getState?: () => number } | null>(null);
+
+  /**
+   * Detiene el lector de html5-qrcode sin romper la app.
+   *
+   * OJO: `stop()` lanza de forma SÍNCRONA ("Cannot stop, scanner is not running or
+   * paused") cuando el lector no está activo, aunque su tipo diga que devuelve
+   * una promesa. Por eso el `.catch()` no alcanzaba: la excepción se escapaba
+   * antes de adjuntarlo. Además el mismo lector se paraba dos veces (una al leer
+   * el código y otra al desmontar), y la segunda siempre fallaba.
+   */
+  const detenerHtml5 = useCallback(() => {
+    const html5 = html5Ref.current;
+    html5Ref.current = null; // lo tomamos primero: así nunca se detiene dos veces
+    if (!html5) return;
+    try {
+      const r = html5.stop();
+      if (r && typeof r.then === "function") r.then(undefined, () => {});
+    } catch {
+      // ya estaba detenido: no hay nada que hacer
+    }
+  }, []);
 
   // Fallback para navegadores sin BarcodeDetector nativo (Safari/iOS)
   async function iniciarConHtml5Qrcode() {
@@ -28,11 +51,26 @@ export function CameraScanner() {
     const html5 = new Html5Qrcode("qr-reader");
     html5Ref.current = html5;
     try {
+      // La cámara va DENTRO de videoConstraints: si se pasa aparte, esta
+      // librería la ignora y el navegador abre la frontal.
+      const videoConstraints = await constraintsCamaraTrasera();
       await html5.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        {
+          // fps más alto = mira más fotogramas por segundo = menos espera
+          fps: 25,
+          // Caja que se adapta al tamaño de la pantalla en vez de una fija de
+          // 250 px, que en un teléfono deja poco margen y ralentiza la lectura.
+          qrbox: (anchoVista, altoVista) => {
+            const lado = Math.floor(Math.min(anchoVista, altoVista) * 0.78);
+            return { width: lado, height: lado };
+          },
+          // Cámara trasera (deviceId) + resolución: más detalle por módulo y
+          // el lector reconoce antes. Si el equipo no puede, el navegador ajusta.
+          videoConstraints,
+        },
         (valor) => {
-          html5.stop().catch(() => {});
+          detenerHtml5();
           setResultado(valor);
           setEstado("exito");
           registrarVisita(extraerCodigo(valor));
@@ -52,30 +90,73 @@ export function CameraScanner() {
   }
 
   async function registrarVisita(codigo: string) {
-    const { data: cliente } = await supabase
+    // OJO con `.single()`: devuelve `data: null` si no hay filas **y también**
+    // si hay más de una. Como antes no se miraba `error`, cualquier falla
+    // terminaba mostrando "no hay ningún cliente con este código".
+    // Con `limit(1)` tomamos la primera fila y, si la consulta falla de verdad,
+    // mostramos ese error en vez de un mensaje mentiroso.
+    const { data: filas, error } = await supabase
       .from("clientes")
-      .select("id, nombre, sellos(cantidad)")
+      .select("id, nombre, membresia, sellos(cantidad)")
       .eq("codigo", codigo)
-      .single();
+      .limit(1);
+
+    if (error) {
+      console.error("[escaneo: buscar cliente]", error.code, error.message, { codigo });
+      setMensaje({
+        tipo: "error",
+        texto: `No se pudo consultar el cliente "${codigo}". ${error.message}`,
+      });
+      return;
+    }
+
+    const cliente = filas?.[0];
+    console.info("[escaneo] filas para", codigo, "→", filas?.length ?? 0);
 
     if (!cliente) {
       setMensaje({ tipo: "no-encontrado", texto: `No hay ningún cliente con el código "${codigo}". Registralo primero desde el formulario.` });
       return;
     }
 
-    await supabase.from("visitas").insert({ cliente_id: cliente.id });
+    const { error: errVisita } = await supabase
+      .from("visitas")
+      .insert({ cliente_id: cliente.id });
+    if (errVisita) {
+      console.error("[visita]", errVisita.code, errVisita.message);
+      setMensaje({
+        tipo: "error",
+        texto: `Se encontró a ${cliente.nombre}, pero no se pudo guardar la visita. ${errVisita.message}`,
+      });
+      return;
+    }
 
     const sellosRow = Array.isArray(cliente.sellos) ? cliente.sellos[0] : cliente.sellos;
     const nuevaCantidad = (sellosRow?.cantidad ?? 0) + 1;
-    await supabase
+    const { error: errSellos } = await supabase
       .from("sellos")
       .upsert({ cliente_id: cliente.id, cantidad: nuevaCantidad, updated_at: new Date().toISOString() });
+    if (errSellos) {
+      console.error("[sellos]", errSellos.code, errSellos.message);
+      setMensaje({
+        tipo: "error",
+        texto: `Visita guardada, pero el sello de ${cliente.nombre} no se pudo actualizar. ${errSellos.message}`,
+      });
+      return;
+    }
 
-    setMensaje({ tipo: "ok", texto: `✅ Visita registrada para ${cliente.nombre}. Sellos: ${nuevaCantidad}.` });
+    // La meta depende del tipo de cliente (regular o miembro)
+    const config = await leerConfigTarjeta(supabase);
+    const meta = metaDeCliente(cliente.membresia, config);
+    const recompensa = recompensaDeCliente(cliente.membresia, config);
+
+    setMensaje({
+      tipo: "ok",
+      texto: `✅ Visita registrada para ${cliente.nombre}. Sellos: ${Math.min(nuevaCantidad, meta)}/${meta}. Recompensa: ${recompensa}.`,
+    });
   }
 
 
-  function detener() {
+  const detener = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
@@ -83,12 +164,11 @@ export function CameraScanner() {
     }
     if (videoRef.current) videoRef.current.srcObject = null;
     if (html5Ref.current) {
-      html5Ref.current.stop().catch(() => {});
-      html5Ref.current = null;
+      detenerHtml5();
     }
-  }
+  }, [detenerHtml5]);
 
-  useEffect(() => () => detener(), []);
+  useEffect(() => () => detener(), [detener]);
 
   function iniciar() {
     setEstado("camera");
@@ -101,8 +181,10 @@ export function CameraScanner() {
       return;
     }
 
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "environment" } })
+    // Cámara trasera a propósito: `abrirCamaraTrasera` elige el deviceId correcto
+    // en vez de confiar en facingMode, que es solo una sugerencia y suele
+    // terminar abriendo la cámara frontal.
+    abrirCamaraTrasera()
       .then((stream) => {
         streamRef.current = stream;
         if (videoRef.current) {
@@ -110,9 +192,17 @@ export function CameraScanner() {
           videoRef.current.play();
         }
         const detector = new Detector({ formats: ["qr_code"] });
+        // Sondeamos cada 200 ms en vez de 500: el detector es una función
+        // sincrónica sobre el fotograma, así que el intervalo es la espera real.
+        // Con 500 ms se perdían hasta medio segundo por lectura.
+        let detectando = false;
         intervalRef.current = setInterval(async () => {
           const video = videoRef.current;
           if (!video || video.readyState < 2) return;
+          // Si el analyze anterior sigue corriendo, no apilamos detecciones:
+          // el navegador puede pedir muchas si el frame tarda.
+          if (detectando) return;
+          detectando = true;
           try {
             const codes = await detector.detect(video);
             if (codes.length > 0) {
@@ -124,8 +214,10 @@ export function CameraScanner() {
             }
           } catch {
             // frames sin QR, seguimos esperando
+          } finally {
+            detectando = false;
           }
-        }, 500);
+        }, 200);
       })
       .catch(() => {
         detener();

@@ -8,11 +8,15 @@ import { RegisterForm } from "@/components/qr/register-form";
 import { ClientSearch } from "@/components/qr/client-search";
 import { CameraScanner } from "@/components/qr/camera-scanner";
 
+// El id del tab es siempre el texto en español (fuente de verdad del i18n) y la
+// etiqueta muestra t(id). Así el tab activo sigue funcionando en cualquier
+// idioma: antes se guardaba la etiqueta ya traducida y nunca coincidía.
 const TABS = ["Formulario", "QR-Cámara"] as const;
+type Tab = (typeof TABS)[number];
 
-export default function QrView() {
+export default function QrView({ origen }: { origen: string }) {
   const t = useT();
-  const [tab, setTab] = useState<"Formulario" | "QR-Cámara">("Formulario");
+  const [tab, setTab] = useState<Tab>("Formulario");
 
   return (
     <div className="flex flex-col gap-6">
@@ -21,9 +25,9 @@ export default function QrView() {
       {/* Pills: solo en móvil/tablet */}
       <div className="lg:hidden">
         <PillTabs
-          tabs={TABS.map((x) => t(x))}
+          tabs={TABS.map((id) => ({ id, label: t(id) }))}
           active={tab}
-          onChange={(t) => setTab(t as "Formulario" | "QR-Cámara")}
+          onChange={(id) => setTab(id as Tab)}
         />
       </div>
 
@@ -31,7 +35,7 @@ export default function QrView() {
       <div className="hidden gap-6 lg:grid lg:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-6">
           <MyQrCard />
-          <ClientSearch />
+          <ClientSearch origen={origen} />
         </div>
         <div className="flex min-w-0 flex-col gap-6">
           <RegisterForm />
@@ -44,7 +48,7 @@ export default function QrView() {
         {tab === "Formulario" ? (
           <div className="flex flex-col gap-6">
             <RegisterForm />
-            <ClientSearch />
+            <ClientSearch origen={origen} />
           </div>
         ) : (
           <div className="flex flex-col gap-6">
