@@ -162,3 +162,19 @@ export function mensajeTarjeta(nombre: string, sellos: number, meta: number, url
 export function enlaceWhatsapp(telefono: string, mensaje: string) {
   return `https://wa.me/${telefono.replace(/[^\d]/g, "")}?text=${encodeURIComponent(mensaje)}`;
 }
+
+export function generarPassWallet(
+  codigo: string,
+  nombre: string,
+  sellos: number,
+  meta: number,
+  recompensa: string,
+  membresia: boolean,
+  colorAcento: string
+) {
+  return { codigo, nombre, sellos, meta, recompensa, membresia, colorAcento };
+}
+
+export function passADataURL(pass: ReturnType<typeof generarPassWallet>) {
+  return `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(pass))}`;
+}

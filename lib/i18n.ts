@@ -196,6 +196,27 @@ export const DICCIONARIO_EN: Record<string, string> = {
     "Show this code at the salon to add your stamps.",
   "sello": "stamp",
   "sellos": "stamps",
+
+  // ===== Notificaciones =====
+  "Sin notificaciones": "No notifications",
+  "Cuando haya algo nuevo, aparecerá aquí.":
+    "When something new happens, it will appear here.",
+  "Marcar todo como leído": "Mark all as read",
+  "Total": "Total",
+  "Sin leer": "Unread",
+  "Felicitar": "Congratulate",
+  "Ver tarjeta": "See card",
+  "Reagendar": "Reschedule",
+  "HOY": "TODAY",
+  "AHORA": "NOW",
+
+  // ===== Panel de notificaciones =====
+  "Atrás": "Back",
+  "Volver atrás": "Go back",
+  "Modo demostración": "Demo mode",
+  "Así se ven las notificaciones": "This is how notifications look",
+  "Ocultar demostración": "Hide demo",
+  "Ver demostración": "View demo",
 };
 
 export type Idioma = "es" | "en";

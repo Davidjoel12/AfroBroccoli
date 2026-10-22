@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase";
 import { Logo } from "@/components/ui/logo";
 import { useIdioma } from "@/components/i18n/language-provider";
 import { LanguageSwitch } from "@/components/i18n/language-switch";
+import { useNotificaciones } from "@/components/notifications/notificaciones-provider";
+import { NotificacionesPanel } from "@/components/notifications/notificaciones-panel";
 
 const RUTAS = [
   { href: "/", label: "Home" },
@@ -53,6 +55,9 @@ export default function AppNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [panelNotificacionesAbierto, setPanelNotificacionesAbierto] = useState(false);
+  const { notificaciones } = useNotificaciones();
+  const noLeidas = notificaciones.filter((n) => !n.leida).length;
 
   async function cerrarSesion() {
     await supabase.auth.signOut();
@@ -97,6 +102,18 @@ export default function AppNav() {
           <div className="ml-auto flex items-center gap-1">
             <LanguageSwitch className="mr-1" />
             <button
+              aria-label={t("Notificaciones")}
+              onClick={() => setPanelNotificacionesAbierto((prev) => !prev)}
+              className="relative cursor-pointer items-center rounded-lg px-3 text-muted-nav transition-colors hover:bg-white/5 hover:text-cream"
+            >
+              <IconBell />
+              {noLeidas > 0 && (
+                <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full flex items-center justify-center text-[9px] bg-accent text-ink font-bold">
+                  {noLeidas > 9 ? "9+" : noLeidas}
+                </span>
+              )}
+            </button>
+            <button
               aria-label={t("Cerrar sesión")}
               title={t("Cerrar sesión")}
               onClick={cerrarSesion}
@@ -107,6 +124,14 @@ export default function AppNav() {
           </div>
         </nav>
       </header>
+
+      {/* Panel de notificaciones (escritorio: popup) */}
+      {panelNotificacionesAbierto && (
+        <NotificacionesPanel
+          variante="popup"
+          onCerrar={() => setPanelNotificacionesAbierto(false)}
+        />
+      )}
 
       {/* ===== Encabezado (móvil y tablet) ===== */}
       <header className="flex items-center justify-between bg-ink px-4 py-3 lg:hidden">
@@ -124,12 +149,21 @@ export default function AppNav() {
 
         <button
           aria-label={t("Notificaciones")}
+          onClick={() => setPanelNotificacionesAbierto((prev) => !prev)}
           className="relative cursor-pointer text-cream"
         >
           <IconBell />
-          {/* Insignia rosa por uso futuro */}
-          <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-accent" />
+          {noLeidas > 0 && (
+            <span className={`absolute -right-1 -top-1 h-5 w-5 rounded-full flex items-center justify-center ${noLeidas > 9 ? "text-[10px]" : "text-[11px]"}`}>
+              {noLeidas > 9 ? "9+" : noLeidas}
+            </span>
+          )}
         </button>
+        {panelNotificacionesAbierto && (
+          <NotificacionesPanel
+            onCerrar={() => setPanelNotificacionesAbierto(false)}
+          />
+        )}
       </header>
 
       {/* ===== Menú lateral (drawer) ===== */}

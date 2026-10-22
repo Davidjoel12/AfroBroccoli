@@ -86,6 +86,7 @@ export function TarjetaCliente({
   const completa = faltan === 0 && meta > 0;
 
   return (
+    <>
     <article
       className={cn("w-full max-w-sm rounded-[20px] p-5 text-cream", className)}
       style={{ backgroundColor: "#221B19" }}
@@ -162,5 +163,6 @@ export function TarjetaCliente({
         )}
       </div>
     </article>
+    </>
   );
 }

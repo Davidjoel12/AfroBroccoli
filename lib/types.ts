@@ -10,6 +10,8 @@ export type Cliente = {
   metaSellos: number; // sellos para la próxima recompensa (según si es miembro o no)
   membresia: boolean;
   visitas: number; // cantidad total de visitas
+  fechaNacimiento?: string | null; // "YYYY-MM-DD" para notificaciones de cumpleaños
+  ultimaVisita?: string | null; // ISO string de la última visita (para notificación de inactividad)
 };
 
 export type Periodo = "dia" | "semana" | "mes";

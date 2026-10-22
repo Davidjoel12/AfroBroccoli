@@ -8,6 +8,7 @@ import { construirSeriesVisitas } from "@/lib/data";
 import { createClient } from "@/lib/supabase-server";
 import { Cliente } from "@/lib/types";
 import { leerConfigTarjeta, metaDeCliente } from "@/lib/config";
+import { ClientesSync } from "@/components/notifications/clientes-sync";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -127,6 +128,9 @@ export default async function Home() {
         <ClientsTable titulo="Clientes regulares" clientes={regulares} esAdmin={esAdmin} origen={origen} />
         <ClientsTable titulo="Clientes membresía" clientes={membresia} esAdmin={esAdmin} origen={origen} />
       </div>
+
+      {/* Sincroniza clientes con el provider de notificaciones (cliente) */}
+      <ClientesSync clientes={clientes} />
     </div>
   );
 }
