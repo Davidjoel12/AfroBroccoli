@@ -4,18 +4,40 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
-import { leerConfigTarjeta, metaDeCliente, recompensaDeCliente } from "@/lib/config";
+import {
+  enlaceWhatsapp,
+  leerConfigTarjeta,
+  metaDeCliente,
+  recompensaDeCliente,
+} from "@/lib/config";
+import { nuevoFolio } from "@/lib/premios";
 import { abrirCamaraTrasera, constraintsCamaraTrasera } from "@/lib/camara";
 import { useT } from "@/components/i18n/language-provider";
 
 type Estado = "idle" | "camera" | "exito" | "error" | "no-soportado";
 type Mensaje = { tipo: "ok" | "no-encontrado" | "error"; texto: string } | null;
 
+/** Premio recién generado: se muestra en pantalla y sirve para reintentar el correo. */
+type Premio = {
+  /** id de la fila en `premios`; se usa para guardar el estado del correo. */
+  premioId?: string;
+  folio: string;
+  nombre: string;
+  codigo: string;
+  correo: string;
+  telefono: string;
+  recompensa: string;
+  meta: number;
+  estado: "enviando" | "enviado" | "sin-correo" | "error";
+  detalle?: string;
+};
+
 export function CameraScanner() {
   const t = useT();
   const [estado, setEstado] = useState<Estado>("idle");
   const [resultado, setResultado] = useState<string>("");
   const [mensaje, setMensaje] = useState<Mensaje>(null);
+  const [premio, setPremio] = useState<Premio | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -89,7 +111,58 @@ export function CameraScanner() {
     return match ? match[1] : valor.trim();
   }
 
+  /** Envía (o reintenta) el correo de premio con el folio ya generado. */
+  async function enviarCorreoPremio(datos: Premio) {
+    setPremio({ ...datos, estado: "enviando", detalle: undefined });
+    try {
+      const respuesta = await fetch("/api/premio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          folio: datos.folio,
+          nombre: datos.nombre,
+          codigo: datos.codigo,
+          correo: datos.correo,
+          recompensa: datos.recompensa,
+          meta: datos.meta,
+          origen: window.location.origin,
+        }),
+      });
+      const data = (await respuesta.json().catch(() => null)) as
+        | { ok?: boolean; mensaje?: string }
+        | null;
+
+      if (respuesta.ok && data?.ok) {
+        if (datos.premioId) {
+          const { error: errCorreo } = await supabase
+            .from("premios")
+            .update({ correo_enviado: true, correo_enviado_at: new Date().toISOString() })
+            .eq("id", datos.premioId);
+          if (errCorreo) {
+            console.error("[premio:correo_enviado]", errCorreo.code, errCorreo.message);
+          }
+        }
+        setPremio({ ...datos, estado: "enviado" });
+      } else {
+        setPremio({
+          ...datos,
+          estado: "error",
+          detalle: data?.mensaje ?? `Error ${respuesta.status}`,
+        });
+      }
+    } catch {
+      setPremio({
+        ...datos,
+        estado: "error",
+        detalle: "No se pudo conectar con el servidor.",
+      });
+    }
+  }
+
   async function registrarVisita(codigo: string) {
+    setMensaje(null);
+    setPremio(null);
+
     // OJO con `.single()`: devuelve `data: null` si no hay filas **y también**
     // si hay más de una. Como antes no se miraba `error`, cualquier falla
     // terminaba mostrando "no hay ningún cliente con este código".
@@ -97,7 +170,7 @@ export function CameraScanner() {
     // mostramos ese error en vez de un mensaje mentiroso.
     const { data: filas, error } = await supabase
       .from("clientes")
-      .select("id, nombre, membresia, sellos(cantidad)")
+      .select("id, codigo, nombre, email, telefono, membresia, sellos(cantidad)")
       .eq("codigo", codigo)
       .limit(1);
 
@@ -130,11 +203,23 @@ export function CameraScanner() {
       return;
     }
 
+    // La meta depende del tipo de cliente (regular o miembro). Se lee ANTES de
+    // guardar porque define si esta visita cierra el ciclo de sellos.
+    const config = await leerConfigTarjeta(supabase);
+    const meta = metaDeCliente(cliente.membresia, config);
+    const recompensa = recompensaDeCliente(cliente.membresia, config);
+
     const sellosRow = Array.isArray(cliente.sellos) ? cliente.sellos[0] : cliente.sellos;
-    const nuevaCantidad = (sellosRow?.cantidad ?? 0) + 1;
+    const selloPrevio = sellosRow?.cantidad ?? 0;
+    const nuevaCantidad = selloPrevio + 1;
+    const completoMeta = meta > 0 && nuevaCantidad >= meta;
+    // Al completar la meta el ciclo se reinicia a 0: la visita que entrega el
+    // premio no cuenta como el primer sello del ciclo siguiente.
+    const cantidadGuardada = completoMeta ? 0 : nuevaCantidad;
+
     const { error: errSellos } = await supabase
       .from("sellos")
-      .upsert({ cliente_id: cliente.id, cantidad: nuevaCantidad, updated_at: new Date().toISOString() });
+      .upsert({ cliente_id: cliente.id, cantidad: cantidadGuardada, updated_at: new Date().toISOString() });
     if (errSellos) {
       console.error("[sellos]", errSellos.code, errSellos.message);
       setMensaje({
@@ -144,14 +229,57 @@ export function CameraScanner() {
       return;
     }
 
-    // La meta depende del tipo de cliente (regular o miembro)
-    const config = await leerConfigTarjeta(supabase);
-    const meta = metaDeCliente(cliente.membresia, config);
-    const recompensa = recompensaDeCliente(cliente.membresia, config);
+    if (completoMeta) {
+      const folio = nuevoFolio(cliente.codigo ?? codigo);
+
+      // Guardamos el premio para que el panel lo muestre como pendiente aunque
+      // el contador ya haya vuelto a 0. Si falla, el flujo sigue igual.
+      const { data: filasPremio, error: errPremio } = await supabase
+        .from("premios")
+        .insert({
+          cliente_id: cliente.id,
+          folio,
+          recompensa,
+          meta,
+          membresia: cliente.membresia,
+        })
+        .select("id");
+      if (errPremio) {
+        console.error("[premio:registrar]", errPremio.code, errPremio.message);
+      }
+      const premioId = (filasPremio?.[0]?.id as string | undefined) ?? undefined;
+
+      const correo = (cliente.email ?? "").trim();
+      const datos: Premio = {
+        premioId,
+        folio,
+        nombre: cliente.nombre,
+        codigo: cliente.codigo ?? codigo,
+        correo,
+        telefono: (cliente.telefono ?? "").replace(/[^\d]/g, ""),
+        recompensa,
+        meta,
+        estado: "sin-correo",
+      };
+
+      setMensaje({
+        tipo: errPremio ? "error" : "ok",
+        texto: errPremio
+          ? `${cliente.nombre} completó sus ${meta} sellos, pero el premio no se pudo registrar en el panel: ${errPremio.message}`
+          : `${cliente.nombre} completó sus ${meta} sellos y el contador volvió a 0/${meta}. Premio: ${recompensa}.`,
+      });
+
+      if (correo) {
+        await enviarCorreoPremio(datos);
+      } else {
+        setPremio(datos);
+      }
+      return;
+    }
 
     setMensaje({
       tipo: "ok",
-      texto: `✅ Visita registrada para ${cliente.nombre}. Sellos: ${Math.min(nuevaCantidad, meta)}/${meta}. Recompensa: ${recompensa}.`,
+      texto: `Visita registrada para ${cliente.nombre}. Sellos: ${nuevaCantidad}/${meta}. Recompensa: ${recompensa}.`,
     });
   }
 
@@ -269,7 +397,63 @@ export function CameraScanner() {
               {mensaje.texto}
             </p>
           )}
-          <Button className="w-full sm:w-auto" onClick={() => { setEstado("idle"); setMensaje(null); }}>{t("Escanear de nuevo")}</Button>
+
+          {premio && (
+            <div className="rounded-lg border border-gold/50 bg-gold/10 px-4 py-3 text-sm">
+              <p className="font-semibold text-ink">{t("Premio generado")}</p>
+              <p className="mt-1 text-ink">
+                {premio.recompensa}
+                <span className="text-muted">
+                  {" · "}
+                  {t("Folio")}: <span className="font-mono font-semibold">{premio.folio}</span>
+                </span>
+              </p>
+
+              {premio.estado === "enviando" && (
+                <p className="mt-2 text-muted">{t("Enviando correo…")}</p>
+              )}
+              {premio.estado === "enviado" && (
+                <p className="mt-2 font-medium text-primary">
+                  {t("Correo enviado a")} {premio.correo}
+                </p>
+              )}
+              {premio.estado === "sin-correo" && (
+                <p className="mt-2 text-pending">{t("El cliente no tiene correo cargado.")}</p>
+              )}
+              {premio.estado === "error" && (
+                <p className="mt-2 text-danger">
+                  {t("No se pudo enviar el correo.")} {premio.detalle}
+                </p>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                {premio.estado === "error" && premio.correo && (
+                  <button
+                    type="button"
+                    onClick={() => enviarCorreoPremio(premio)}
+                    className="font-semibold text-primary underline underline-offset-2 hover:text-primary/90"
+                  >
+                    {t("Reintentar correo")}
+                  </button>
+                )}
+                {premio.estado !== "enviado" && premio.estado !== "enviando" && premio.telefono && (
+                  <a
+                    href={enlaceWhatsapp(
+                      premio.telefono,
+                      `Hola ${premio.nombre}, ¡felicitaciones! Completaste tus ${premio.meta} sellos y ganaste: ${premio.recompensa}. Mostrá este mensaje en AfroBroccoli para reclamar tu premio. Folio: ${premio.folio}.`
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-primary underline underline-offset-2 hover:text-primary/90"
+                  >
+                    {t("Enviar por WhatsApp")}
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          <Button className="w-full sm:w-auto" onClick={() => { setEstado("idle"); setMensaje(null); setPremio(null); }}>{t("Escanear de nuevo")}</Button>
         </div>
       )}
 

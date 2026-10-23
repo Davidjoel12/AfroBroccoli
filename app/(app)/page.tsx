@@ -5,10 +5,12 @@ import { VisitsChart } from "@/components/home/charts";
 import { ClientsTable } from "@/components/home/clients-table";
 import { WelcomeCard, DistributionCard } from "@/components/home/home-blocks";
 import { construirSeriesVisitas } from "@/lib/data";
+import { claveDia } from "@/lib/fechas";
 import { createClient } from "@/lib/supabase-server";
-import { Cliente } from "@/lib/types";
+import { Cliente, Premio } from "@/lib/types";
 import { leerConfigTarjeta, metaDeCliente } from "@/lib/config";
 import { ClientesSync } from "@/components/notifications/clientes-sync";
+import { PremiosSync } from "@/components/notifications/premios-sync";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -28,6 +30,14 @@ export default async function Home() {
   const { data: visitasData } = await supabase
     .from("visitas")
     .select("created_at, cliente_id, clientes(membresia)");
+
+  // Premios pendientes de entregar. Si la tabla todavía no existe (migración sin
+  // correr), la consulta falla y simplemente no se muestran premios.
+  const { data: premiosData } = await supabase
+    .from("premios")
+    .select("id, folio, recompensa, meta, created_at, cliente_id, clientes(nombre, codigo, telefono)")
+    .eq("estado", "pendiente")
+    .order("created_at", { ascending: false });
 
   // Config de la tarjeta: cada tipo de cliente tiene su meta (regular / miembro)
   const config = await leerConfigTarjeta(supabase);
@@ -62,10 +72,27 @@ export default async function Home() {
   const regulares = clientes.filter((c) => !c.membresia);
   const membresia = clientes.filter((c) => c.membresia);
 
-  const inicioDeHoy = new Date();
-  inicioDeHoy.setHours(0, 0, 0, 0);
+  const premios: Premio[] = (premiosData ?? []).map((p) => {
+    const join = p.clientes as unknown;
+    const cliente = Array.isArray(join)
+      ? (join[0] as { nombre?: string; codigo?: string; telefono?: string } | undefined)
+      : (join as { nombre?: string; codigo?: string; telefono?: string } | null);
+    return {
+      id: p.id,
+      clienteId: p.cliente_id,
+      clienteNombre: cliente?.nombre ?? "",
+      clienteCodigo: cliente?.codigo ?? "",
+      telefono: (cliente?.telefono ?? "").replace(/[^\d]/g, "") || undefined,
+      folio: p.folio,
+      recompensa: p.recompensa,
+      meta: p.meta,
+      fecha: p.created_at,
+    };
+  });
+
+  const hoy = claveDia();
   const visitasHoy = (visitasData ?? []).filter(
-    (v) => new Date(v.created_at) >= inicioDeHoy
+    (v) => claveDia(v.created_at) === hoy
   ).length;
 
   const sellosTotales = clientes.reduce((acc, c) => acc + c.sellos, 0);
@@ -129,8 +156,9 @@ export default async function Home() {
         <ClientsTable titulo="Clientes membresía" clientes={membresia} esAdmin={esAdmin} origen={origen} />
       </div>
 
-      {/* Sincroniza clientes con el provider de notificaciones (cliente) */}
+      {/* Sincroniza clientes y premios pendientes con el provider de notificaciones */}
       <ClientesSync clientes={clientes} />
+      <PremiosSync premios={premios} />
     </div>
   );
 }

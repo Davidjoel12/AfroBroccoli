@@ -10,10 +10,9 @@ import type { Cliente } from "@/lib/types";
  * panel de notificaciones sin volver a consultar Supabase.
  */
 export function ClientesSync({ clientes }: { clientes: Cliente[] }) {
-  const { setClientes, regenerate } = useNotificaciones();
+  const { setClientes } = useNotificaciones();
   useEffect(() => {
     setClientes(clientes);
-    regenerate();
-  }, [clientes, setClientes, regenerate]);
+  }, [clientes, setClientes]);
   return null;
 }

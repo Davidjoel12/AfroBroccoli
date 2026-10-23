@@ -202,6 +202,7 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Cuando haya algo nuevo, aparecerá aquí.":
     "When something new happens, it will appear here.",
   "Marcar todo como leído": "Mark all as read",
+  "Marcar como entregado": "Mark as delivered",
   "Total": "Total",
   "Sin leer": "Unread",
   "Felicitar": "Congratulate",
@@ -217,6 +218,16 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Así se ven las notificaciones": "This is how notifications look",
   "Ocultar demostración": "Hide demo",
   "Ver demostración": "View demo",
+
+  // ===== Premios =====
+  "Premio generado": "Prize generated",
+  "Folio": "Reference",
+  "Enviando correo…": "Sending email…",
+  "Correo enviado a": "Email sent to",
+  "El cliente no tiene correo cargado.": "The client has no email on file.",
+  "No se pudo enviar el correo.": "The email could not be sent.",
+  "Reintentar correo": "Retry email",
+  "Enviar por WhatsApp": "Send via WhatsApp",
 };
 
 export type Idioma = "es" | "en";

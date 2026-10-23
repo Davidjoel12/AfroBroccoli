@@ -15,3 +15,17 @@ export type Cliente = {
 };
 
 export type Periodo = "dia" | "semana" | "mes";
+
+/** Fila de `premios` lista para mostrarse como notificación pendiente. */
+export type Premio = {
+  id: string;
+  clienteId: string;
+  clienteNombre: string;
+  clienteCodigo: string;
+  telefono?: string;
+  folio: string;
+  recompensa: string;
+  meta: number;
+  /** ISO string de `created_at`. */
+  fecha: string;
+};

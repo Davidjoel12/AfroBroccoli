@@ -1,54 +1,80 @@
-import { Cliente, Periodo } from "./types";
+import { Periodo } from "./types";
+import { claveDia, claveDeCivil, hoyCivil } from "./fechas";
 
 export type SerieVisitas = Record<
   Periodo,
   { labels: string[]; regulares: number[]; membresia: number[] }
 >;
 
-// Construye las series de visitas a partir de filas reales (visitas + membresía del cliente)
+// Construye las series de visitas a partir de filas reales (visitas + membresía del cliente).
+// Los días se calculan en la zona horaria del salón (America/Panama), no en la
+// del servidor, para que una visita de la noche no caiga en el día siguiente.
 export function construirSeriesVisitas(
   visitas: { created_at: string; membresia: boolean }[]
 ): SerieVisitas {
   const DAY = 24 * 60 * 60 * 1000;
-  const inicioDeHoy = new Date();
-  inicioDeHoy.setHours(0, 0, 0, 0);
+  const hoy = hoyCivil();
+  const visitasConDia = visitas.map((v) => ({
+    ...v,
+    dia: claveDia(v.created_at),
+  }));
 
   // --- últimos 7 días ---
-  const dias = Array.from({ length: 7 }, (_, i) => new Date(inicioDeHoy.getTime() - (6 - i) * DAY));
+  const dias = Array.from({ length: 7 }, (_, i) => new Date(hoy.getTime() - (6 - i) * DAY));
+  const clavesDias = dias.map(claveDeCivil);
   const nombresDias = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-  const enMismoDia = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
   const dia = {
-    labels: dias.map((d) => nombresDias[d.getDay()]),
-    regulares: dias.map((d) => visitas.filter((v) => !v.membresia && enMismoDia(new Date(v.created_at), d)).length),
-    membresia: dias.map((d) => visitas.filter((v) => v.membresia && enMismoDia(new Date(v.created_at), d)).length),
+    labels: dias.map((d) => nombresDias[d.getUTCDay()]),
+    regulares: clavesDias.map(
+      (clave) =>
+        visitasConDia.filter((v) => !v.membresia && v.dia === clave).length
+    ),
+    membresia: clavesDias.map(
+      (clave) =>
+        visitasConDia.filter((v) => v.membresia && v.dia === clave).length
+    ),
   };
 
   // --- últimas 4 semanas (bloques de 7 días) ---
   const semanas = [0, 1, 2, 3].map((i) => ({
-    desde: new Date(inicioDeHoy.getTime() - (3 - i) * 7 * DAY),
-    hasta: new Date(inicioDeHoy.getTime() - (2 - i) * 7 * DAY),
+    desde: claveDeCivil(new Date(hoy.getTime() - (3 - i) * 7 * DAY)),
+    hasta: claveDeCivil(new Date(hoy.getTime() - (2 - i) * 7 * DAY)),
   }));
   const semana = {
     labels: ["Sem 1", "Sem 2", "Sem 3", "Sem 4"],
-    regulares: semanas.map((s) => visitas.filter((v) => !v.membresia && new Date(v.created_at) >= s.desde && new Date(v.created_at) < s.hasta).length),
-    membresia: semanas.map((s) => visitas.filter((v) => v.membresia && new Date(v.created_at) >= s.desde && new Date(v.created_at) < s.hasta).length),
+    regulares: semanas.map(
+      (s) =>
+        visitasConDia.filter(
+          (v) => !v.membresia && v.dia >= s.desde && v.dia < s.hasta
+        ).length
+    ),
+    membresia: semanas.map(
+      (s) =>
+        visitasConDia.filter(
+          (v) => v.membresia && v.dia >= s.desde && v.dia < s.hasta
+        ).length
+    ),
   };
 
   // --- últimos 6 meses ---
-  const meses = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(inicioDeHoy);
-    d.setMonth(d.getMonth() - (5 - i));
-    return d;
-  });
+  const meses = Array.from(
+    { length: 6 },
+    (_, i) =>
+      new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth() - (5 - i), 1))
+  );
   const nombresMeses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
   const mes = {
-    labels: meses.map((d) => nombresMeses[d.getMonth()]),
-    regulares: meses.map((d) => visitas.filter((v) => !v.membresia && new Date(v.created_at).getMonth() === d.getMonth() && new Date(v.created_at).getFullYear() === d.getFullYear()).length),
-    membresia: meses.map((d) => visitas.filter((v) => v.membresia && new Date(v.created_at).getMonth() === d.getMonth() && new Date(v.created_at).getFullYear() === d.getFullYear()).length),
+    labels: meses.map((d) => nombresMeses[d.getUTCMonth()]),
+    regulares: meses.map((d) => {
+      const prefijo = claveDeCivil(d).slice(0, 7);
+      return visitasConDia.filter((v) => !v.membresia && v.dia.startsWith(prefijo)).length;
+    }),
+    membresia: meses.map((d) => {
+      const prefijo = claveDeCivil(d).slice(0, 7);
+      return visitasConDia.filter((v) => v.membresia && v.dia.startsWith(prefijo)).length;
+    }),
   };
 
   return { dia, semana, mes };
 }
-

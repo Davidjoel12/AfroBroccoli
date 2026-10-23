@@ -31,13 +31,13 @@ const NOTIFICACIONES_DEMO: Notificacion[] = [
   },
   {
     id: "demo-sellos",
-    tipo: "sellos_completos",
+    tipo: "premio_pendiente",
     clienteId: "demo-2",
     clienteNombre: "Carlos Ruiz",
     clienteCodigo: "AB-1002",
     telefono: "50760000002",
-    titulo: "Recompensa lista",
-    cuerpo: "Carlos Ruiz completo sus 5 sellos.",
+    titulo: "Recompensa pendiente",
+    cuerpo: "Carlos Ruiz completó sus 5 sellos. Por entregar: 1 servicio gratis.",
     leida: false,
     fecha: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
   },
@@ -58,7 +58,7 @@ const NOTIFICACIONES_DEMO: Notificacion[] = [
 function IconoNotificacion({ tipo, color }: { tipo: Notificacion["tipo"]; color: string }) {
   const iconos: Record<Notificacion["tipo"], string> = {
     cumpleanos: "A",
-    sellos_completos: "S",
+    premio_pendiente: "R",
     inactividad: "I",
   };
   return (
@@ -87,8 +87,8 @@ export function NotificacionesPanel({
   const t = useT();
   const router = useRouter();
   const pathname = usePathname();
-  const { notificaciones: notificacionesProvider } = useNotificaciones();
-  const [leidas, setLeidas] = useState<Set<string>>(new Set());
+  const { notificaciones: notificacionesProvider, estaLeida, marcarLeida, marcarTodasLeidas: marcarTodasLeidasProvider, marcarPremioEntregado } =
+    useNotificaciones();
   const [demo, setDemo] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -96,14 +96,10 @@ export function NotificacionesPanel({
   const hayNotificacionesReales = notificacionesReales.length > 0;
   const mostrarDemo = demo || (!hayNotificacionesReales && !demo);
   const notificaciones = mostrarDemo ? NOTIFICACIONES_DEMO : notificacionesReales;
-  const noLeidas = notificaciones.filter((n) => !leidas.has(n.id));
-
-  const marcarLeida = (id: string) => {
-    setLeidas((prev) => new Set([...prev, id]));
-  };
+  const noLeidas = notificaciones.filter((n) => !estaLeida(n));
 
   const marcarTodasLeidas = () => {
-    setLeidas(new Set(notificaciones.map((n) => n.id)));
+    marcarTodasLeidasProvider(notificaciones.map((n) => n.id));
   };
 
   const volverAtras = () => {
@@ -183,7 +179,7 @@ export function NotificacionesPanel({
         ) : (
           notificaciones.map((n) => {
             const color = colorPorTipo(n.tipo);
-            const yaLeida = leidas.has(n.id);
+            const yaLeida = estaLeida(n);
             return (
               <div
                 key={n.id}
@@ -213,6 +209,18 @@ export function NotificacionesPanel({
                     </span>
                   </div>
                   <p className="mt-0.5 text-[10px] text-muted leading-snug">{n.cuerpo}</p>
+                  {n.premioId && !mostrarDemo && (
+                    <button
+                      type="button"
+                      onClick={(evento) => {
+                        evento.stopPropagation();
+                        void marcarPremioEntregado(n.premioId!);
+                      }}
+                      className="mt-1 text-[10px] font-semibold text-primary underline underline-offset-2 hover:text-primary/90"
+                    >
+                      {t("Marcar como entregado")}
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -295,7 +303,7 @@ export function NotificacionesPanel({
           ) : (
             notificaciones.map((n) => {
               const color = colorPorTipo(n.tipo);
-              const yaLeida = leidas.has(n.id);
+              const yaLeida = estaLeida(n);
               return (
                 <div
                   key={n.id}
@@ -325,6 +333,18 @@ export function NotificacionesPanel({
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-muted leading-snug">{n.cuerpo}</p>
+                    {n.premioId && !mostrarDemo && (
+                      <button
+                        type="button"
+                        onClick={(evento) => {
+                          evento.stopPropagation();
+                          void marcarPremioEntregado(n.premioId!);
+                        }}
+                        className="mt-2 text-xs font-semibold text-primary underline underline-offset-2 hover:text-primary/90"
+                      >
+                        {t("Marcar como entregado")}
+                      </button>
+                    )}
                   </div>
                 </div>
               );

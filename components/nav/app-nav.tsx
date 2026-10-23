@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Logo } from "@/components/ui/logo";
 import { useIdioma } from "@/components/i18n/language-provider";
@@ -56,8 +56,20 @@ export default function AppNav() {
   const router = useRouter();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [panelNotificacionesAbierto, setPanelNotificacionesAbierto] = useState(false);
-  const { notificaciones } = useNotificaciones();
-  const noLeidas = notificaciones.filter((n) => !n.leida).length;
+  const [esEscritorio, setEsEscritorio] = useState(false);
+  const { notificaciones, estaLeida } = useNotificaciones();
+  const noLeidas = notificaciones.filter((n) => !estaLeida(n)).length;
+
+  // Un solo panel montado a la vez: el popup de escritorio y el drawer móvil
+  // comparten estado, y el popup cierra al hacer clic fuera, lo que cerraba
+  // el drawer en móvil al tocar cualquier notificación.
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const actualizar = () => setEsEscritorio(mq.matches);
+    actualizar();
+    mq.addEventListener("change", actualizar);
+    return () => mq.removeEventListener("change", actualizar);
+  }, []);
 
   async function cerrarSesion() {
     await supabase.auth.signOut();
@@ -126,7 +138,7 @@ export default function AppNav() {
       </header>
 
       {/* Panel de notificaciones (escritorio: popup) */}
-      {panelNotificacionesAbierto && (
+      {panelNotificacionesAbierto && esEscritorio && (
         <NotificacionesPanel
           variante="popup"
           onCerrar={() => setPanelNotificacionesAbierto(false)}
@@ -150,16 +162,16 @@ export default function AppNav() {
         <button
           aria-label={t("Notificaciones")}
           onClick={() => setPanelNotificacionesAbierto((prev) => !prev)}
-          className="relative cursor-pointer text-cream"
+          className="relative cursor-pointer p-1 text-cream"
         >
           <IconBell />
           {noLeidas > 0 && (
-            <span className={`absolute -right-1 -top-1 h-5 w-5 rounded-full flex items-center justify-center ${noLeidas > 9 ? "text-[10px]" : "text-[11px]"}`}>
+            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold text-ink ring-2 ring-ink">
               {noLeidas > 9 ? "9+" : noLeidas}
             </span>
           )}
         </button>
-        {panelNotificacionesAbierto && (
+        {panelNotificacionesAbierto && !esEscritorio && (
           <NotificacionesPanel
             onCerrar={() => setPanelNotificacionesAbierto(false)}
           />

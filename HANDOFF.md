@@ -1,8 +1,22 @@
-# HANDOFF — AfroBroccoli (sesión 2026-10-06 → 2026-10-18)
+# HANDOFF — AfroBroccoli (sesión 2026-10-06 → 2026-10-22)
 
 > Prompt de continuidad para otra IA. Leer completo antes de trabajar. Idioma de la UI y de la conversación: **español** (voseo en el copy: "Elegí", "Verificá", "Apuntá").
 
-## 0. Sesión 2026-10-18 — qué se hizo (leer primero)
+## 0. Sesión 2026-10-22 — deploy en Vercel y premios por correo
+
+### Deploy
+- Proyecto en Vercel conectado al repo de GitHub (`Davidjoel12/AfroBroccoli`, branch `main`). **Push a `main` = deploy automático**; no hay `.vercel` ni `vercel.json` en el repo.
+- Variables en Vercel (Settings → Environment Variables, y **Redeploy** después de cambiarlas): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GMAIL_USER`, `GMAIL_APP_PASSWORD` y `EMAIL_FROM` (solo nombre visible). Alternativas ya soportadas por código: `BREVO_API_KEY` o `RESEND_API_KEY` (esta última para cuando haya dominio propio).
+- Producción y local comparten el **mismo proyecto de Supabase**: los datos son los mismos. No hay base de datos de staging.
+
+### Premios (reinicio de sellos + correo)
+- `components/qr/camera-scanner.tsx`: al escanear, `nuevaCantidad = selloPrevio + 1`. Si llega a la meta, se guarda **0** (el ciclo reinicia y esa visita no cuenta para el ciclo nuevo) y se dispara el correo de premio. La meta y la recompensa se leen **antes** de guardar (`metaDeCliente` / `recompensaDeCliente`).
+- `lib/premios.ts`: `nuevoFolio(codigo)` (formato `AB-1001-20261022-7F3K`) y `construirCorreoPremio()` (HTML + texto, con folio, recompensa, código, fecha y link a la tarjeta). El correo es el **comprobante** que la clienta muestra en el salón.
+- `app/api/premio/route.ts`: `POST /api/premio` envía por **Gmail SMTP** (`nodemailer`, `smtp.gmail.com:465`, `GMAIL_USER` + `GMAIL_APP_PASSWORD`) porque no hay dominio propio. `EMAIL_FROM` solo aporta el **nombre visible**; la dirección siempre es `GMAIL_USER`. También soporta **Brevo** (`BREVO_API_KEY`, reemplaza el remitente si es Gmail) y **Resend** (`RESEND_API_KEY`, requiere dominio) para el futuro. Sin proveedor responde 503 `sin_configurar`; el escáner muestra el aviso, ofrece **WhatsApp** de respaldo y permite **reintentar** el correo con el mismo folio.
+- Si el cliente no tiene correo, el contador se reinicia igual y se muestra el aviso + botón de WhatsApp (decisión del usuario).
+- **Premios pendientes (tabla `premios`) — implementado 2026-10-23.** Como el contador vuelve a 0, la notificación ya no se deduce de `sellos >= meta`. Al completar la meta el escáner inserta una fila en `premios` (folio, recompensa, meta, membresía, `correo_enviado` / `correo_enviado_at`) y Home trae las pendientes (join a `clientes`) vía `PremiosSync` al provider. El panel muestra "Recompensa pendiente" con botón **Marcar como entregado** (`estado='entregado'`). ⚠️ **FALTA QUE EL USUARIO CORRA** `supabase/migrations/20261022000000_premios.sql` (Supabase → SQL Editor). Si no está corrida, la consulta de premios falla y la app sigue funcionando sin premios (no se rompe).
+
+## 0b. Sesión 2026-10-18 — qué se hizo (leer primero)
 
 Cinco pedidos del usuario, todos implementados:
 
