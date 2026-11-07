@@ -1,22 +1,282 @@
-# HANDOFF — AfroBroccoli (sesión 2026-10-06 → 2026-10-22)
+# HANDOFF — AfroBroccoli (sesión 2026-10-06 → 2026-11-06)
 
 > Prompt de continuidad para otra IA. Leer completo antes de trabajar. Idioma de la UI y de la conversación: **español** (voseo en el copy: "Elegí", "Verificá", "Apuntá").
 
-## 0. Sesión 2026-10-22 — deploy en Vercel y premios por correo
+## 0. Sesión 2026-11-06 — cumpleaños automático + aviso a los 4 sellos
+
+### Modelo nuevo
+- El correo de premio **ya no sale al completar la meta**. Ahora sale al quedar a **1 sello** (`nuevaCantidad === meta - 1`), con la plantilla `construirCorreoAviso`.
+- Al completar la meta se sigue guardando el premio pendiente en `premios` y la campana muestra **Recompensa pendiente**; no se manda correo automático.
+- La campana agrega `casi_premio` cuando `sellos === metaSellos - 1` (y no hay premio pendiente). Se calcula desde los clientes, sin tabla nueva. Al hacer clic ofrece un WhatsApp de recordatorio.
+- **Cumpleaños:** cron diario de Vercel a las 9:00 AM de Panamá (`0 14 * * *` UTC) en `/api/cron/cumpleanos`. Envía la felicitación y guarda `clientes.cumpleanos_correo_anio` para no repetir el envío.
+- `lib/email.ts` centraliza Gmail/Brevo/Resend. `/api/premio` quedó para reenvíos manuales; el flujo automático usa `/api/aviso` (aviso de 4 sellos) y el cron (cumpleaños).
+- `lib/premios.ts` agrega `construirCorreoAviso` y `construirCorreoCumpleanos`.
+- `proxy.ts` agrega `/api/cron/` a las rutas públicas. El cron no usa cookie de sesión: se autentica solo con `CRON_SECRET`.
+
+### SQL pendiente (ejecutar en Supabase → SQL Editor)
+```sql
+alter table public.clientes
+  add column if not exists cumpleanos_correo_anio integer;
+
+comment on column public.clientes.cumpleanos_correo_anio is
+  'Año del último correo de cumpleaños enviado. Evita duplicados.';
+
+notify pgrst, 'reload schema';
+```
+> Si la columna no existe, `/api/cron/cumpleanos` responde 500 `falta_columna` con el aviso para correr este bloque.
+
+### Variables nuevas en Vercel
+- `SUPABASE_SERVICE_ROLE_KEY`: service role key del proyecto. Es **solo para el servidor**; no la pongas en una variable `NEXT_PUBLIC_*`.
+- `CRON_SECRET`: una clave larga y aleatoria. Vercel la manda como `Authorization: Bearer ...` al cron.
+- Después de agregarlas, **Redeploy**.
+
+### Cron
+- `vercel.json` nuevo:
+```json
+{ "crons": [{ "path": "/api/cron/cumpleanos", "schedule": "0 14 * * *" }] }
+```
+- 14:00 UTC = 9:00 AM en Panamá (Panamá no tiene horario de verano).
+- Prueba manual:
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://<dominio>/api/cron/cumpleanos
+```
+- Vercel Cron solo corre en producción. Si el plan no permite cron, se puede llamar la misma ruta desde otro scheduler con el mismo header.
+- El cron devuelve `{ ok, fecha, enviados, omitidos, errores }`. Un segundo llamado el mismo día debe dar `omitidos >= 1` para los que ya recibieron.
+
+### Verificación
+- `npx tsc --noEmit` OK · `npx next build` OK · lint con los mismos 4 errores / 3 warnings preexistentes.
+- Pendiente: correr el SQL, agregar las dos variables, redeploy y probar:
+  - escanear un cliente hasta **4/5** → correo de aviso + campana **Casi premio**;
+  - escanear el **5.º** → premio pendiente en la campana, sin correo automático;
+  - poner a un cliente de prueba con cumpleaños de hoy → correo y `cumpleanos_correo_anio` actualizado;
+  - segundo llamado del cron el mismo día → `omitidos` y sin correo repetido.
+
+## 0a. Sesión 2026-11-06 — membresía como suscripción + tarjeta regular única
+
+### Modelo nuevo (reemplaza el anterior)
+- Un cliente **siempre es cliente regular** y acumula sellos. La membresía es una **suscripción mensual aparte** (beneficios/servicios por temporada), no un segundo programa de sellos.
+- `clientes.membresia` sigue siendo el booleano, pero ahora significa **"además tiene membresía"**. No reemplaza la tarjeta regular.
+- Un miembro aparece en **las dos tablas** de Home: "Clientes" (todos) y "Clientes membresía". En la primera lleva un badge **Miembro** y se ven sus sellos; en la segunda **no se muestran sellos** (la membresía se gestiona aparte, aunque el miembro siga acumulando en su tarjeta regular).
+- La visita se guarda con `visitas.membresia` (nuevo). Se setea al escanear con el estado de ese día, así el histórico no cambia si después entra o sale de la membresía.
+- **Una sola meta/recompensa para todos**: se eliminaron `metaMembresia`, `recompensaMembresia`, `metaDeCliente()` y `recompensaDeCliente()`. El escáner, Home, el modal de editar y la tarjeta pública usan `config.meta` / `config.recompensa`.
+- El premio de sellos se registra con `premios.membresia = false` (es el premio de la tarjeta regular). La membresía no altera el ciclo de sellos.
+- Se aprovechó para completar `ultimaVisita` en Home (antes no se pasaba y la notificación de inactividad no podía dispararse).
+
+### SQL pendiente (ejecutar en Supabase → SQL Editor antes de probar)
+```sql
+-- Todo en una transacción: si algo falla, no se queda a medias.
+begin;
+
+-- 1) La visita guarda si fue como miembro.
+alter table public.visitas
+  add column if not exists membresia boolean not null default false;
+
+-- 2) Histórico: conserva la clasificación que ya mostraba el dashboard.
+--    Si preferís no reescribir el pasado, saltá este update.
+update public.visitas v
+set membresia = coalesce(c.membresia, false)
+from public.clientes c
+where v.cliente_id = c.id
+  and v.membresia is distinct from coalesce(c.membresia, false);
+
+-- 3) La tarjeta pública siempre usa la meta/recompensa regular.
+drop function if exists public.tarjeta_cliente(text);
+
+create function public.tarjeta_cliente(p_codigo text)
+returns table (
+  nombre text,
+  codigo text,
+  membresia boolean,
+  sellos integer,
+  meta integer,
+  recompensa text,
+  color_acento text,
+  logo_url text
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    c.nombre,
+    c.codigo,
+    c.membresia,
+    coalesce(s.cantidad, 0)::integer as sellos,
+    coalesce(cfg.meta, 5)::integer as meta,
+    coalesce(cfg.recompensa, '1 servicio gratis') as recompensa,
+    cfg.color_acento,
+    cfg.logo_url
+  from public.clientes c
+  left join public.sellos s on s.cliente_id = c.id
+  left join public.config cfg on cfg.id = 1
+  where c.codigo = p_codigo
+  limit 1;
+$$;
+
+grant execute on function public.tarjeta_cliente(text) to anon, authenticated;
+
+comment on column public.clientes.membresia is
+  'true = además tiene membresía mensual. Todos los clientes acumulan sellos en su tarjeta regular.';
+comment on column public.visitas.membresia is
+  'true = la visita se registró como miembro (ese día tenía membresía).';
+
+-- Refresca la caché de PostgREST para que la app vea la columna/función nuevas.
+notify pgrst, 'reload schema';
+
+commit;
+
+-- Opcional, después de deployar la versión nueva:
+-- alter table public.config drop column if exists meta_membresia;
+-- alter table public.config drop column if exists recompensa_membresia;
+```
+> Si la función actual usa `varchar` en vez de `text`, cambiá el tipo en el `drop function` y en `create function` (o ejecutá solo el `create or replace` si el retorno coincide).
+
+### SQL adicional — regularizar tarjetas que quedaron en la meta
+
+Ejecutar **después** del bloque anterior (y después de la migración de `premios` si todavía no está corrida). Crea la función que usa Configuración al cambiar la meta y, al final, la ejecuta una vez para arreglar los contadores atrasados. Por cada cliente con `sellos.cantidad >= config.meta` crea **un premio pendiente** (si no tiene uno) y deja el contador en **0**.
+
+```sql
+create or replace function public.normalizar_sellos()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_meta integer;
+  v_recompensa text;
+  v_cliente record;
+  v_total integer := 0;
+begin
+  -- En la app solo puede llamarla un admin. En SQL Editor (auth.uid() null)
+  -- se permite para poder correr la regularización manual.
+  if auth.uid() is not null
+     and not exists (
+       select 1 from public.profiles
+       where id = auth.uid() and role = 'admin'
+     ) then
+    raise exception 'Solo el administrador puede regularizar los sellos.';
+  end if;
+
+  if to_regclass('public.premios') is null then
+    raise exception 'Falta la tabla public.premios. Corré primero la migración de premios.';
+  end if;
+
+  select meta, recompensa
+    into v_meta, v_recompensa
+  from public.config
+  where id = 1;
+
+  if coalesce(v_meta, 0) <= 0 then
+    return 0;
+  end if;
+
+  for v_cliente in
+    select c.id, c.codigo, s.cantidad
+    from public.clientes c
+    join public.sellos s on s.cliente_id = c.id
+    where s.cantidad >= v_meta
+    order by c.codigo
+    for update of s
+  loop
+    -- Si ya hay un premio pendiente no duplicamos; solo reiniciamos.
+    if not exists (
+      select 1 from public.premios p
+      where p.cliente_id = v_cliente.id
+        and p.estado = 'pendiente'
+    ) then
+      insert into public.premios (cliente_id, folio, recompensa, meta, membresia, estado)
+      values (
+        v_cliente.id,
+        coalesce(nullif(v_cliente.codigo, ''), left(v_cliente.id::text, 8))
+          || '-' || to_char(now(), 'YYYYMMDD') || '-'
+          || upper(substr(md5(random()::text), 1, 4)),
+        coalesce(v_recompensa, '1 servicio gratis'),
+        v_meta,
+        false,
+        'pendiente'
+      );
+    end if;
+
+    update public.sellos
+      set cantidad = 0,
+          updated_at = now()
+      where cliente_id = v_cliente.id;
+
+    v_total := v_total + 1;
+  end loop;
+
+  return v_total;
+end;
+$$;
+
+revoke all on function public.normalizar_sellos() from public;
+revoke all on function public.normalizar_sellos() from anon;
+grant execute on function public.normalizar_sellos() to authenticated, service_role;
+
+comment on function public.normalizar_sellos() is
+  'Cierra tarjetas con sellos >= meta: crea premio pendiente (si no hay uno) y reinicia a 0. Devuelve cuántas tarjetas regularizó.';
+
+-- Vista previa opcional (no modifica nada): clientes que se van a regularizar.
+-- select c.codigo, c.nombre, c.membresia, s.cantidad as sellos, cfg.meta
+-- from public.clientes c
+-- join public.sellos s on s.cliente_id = c.id
+-- cross join public.config cfg
+-- where cfg.id = 1 and s.cantidad >= cfg.meta
+-- order by s.cantidad desc, c.codigo;
+
+-- Arregla los contadores atrasados ahora. El resultado es la cantidad de
+-- tarjetas regularizadas; revisá los premios pendientes en Home.
+select public.normalizar_sellos() as tarjetas_regularizadas;
+
+notify pgrst, 'reload schema';
+```
+
+> **Por qué pasó:** el reinicio a 0 ocurre cuando el escáner registra la visita que llega a la meta, no cuando se cambia la meta en Configuración. Si la meta bajó de 8 a 5 (o si un contador se cargó a mano hasta la meta), los clientes que ya tenían 5, 6 o 7 sellos quedaron mostrando la meta hasta su próximo escaneo. La tabla además muestra `min(sellos, meta)`, así que un cliente con 6 sellos se veía como `5/5`. La función de arriba regulariza esos casos y Configuración la llama automáticamente cuando cambia la meta; el modal de edición también cierra el ciclo si el admin carga la meta a mano.
+>
+> Después de correr el `select`, revisá **Recompensas pendientes** en Home. Si alguno de esos clientes ya había canjeado su premio, marcalo como entregado para no darlo dos veces.
+
+### Verificación
+`tsc --noEmit` OK · `next build` OK · lint con los mismos 4 errores / 3 warnings preexistentes. Falta correr los dos bloques SQL y probar en Supabase: Home (tablas y gráficos), escaneo de un miembro (visita + sello + premio), tarjeta pública, registro, edición de sellos desde el modal y cambio de meta en Configuración (debe regularizar y dejar premios pendientes).
+
+## 0b. Sesión 2026-11-06 — barra de búsqueda y filtros en Home + fecha de nacimiento
+
+### Barra de búsqueda y filtros (Home)
+- **La búsqueda manual salió de `/qr`**: se eliminó `components/qr/client-search.tsx` y `QrView` ya no recibe `origen` (la página tampoco resuelve `headers()`). En `/qr` quedan solo el QR, el formulario y el escáner.
+- La barra nueva vive **al lado del banner de bienvenida**: `components/home/clientes-filtros.tsx` (`FiltrosClientesProvider` + `FiltrosClientesBar`). Es horizontal desde `xl` (banner `0.85fr` + barra `2.15fr`) y se apila en pantallas menores.
+- Controles: **búsqueda en vivo** (nombre, correo, código y teléfono; ignora tildes y normaliza los dígitos del teléfono) + **Mes de registro** + **Mes de cumpleaños**. Filtran **las dos tablas** (todos los clientes y membresía) porque comparten `useFiltrosClientes()`.
+- `ClientsTable` filtra con `coincide()`, vuelve a la página 1 al cambiar filtros y muestra un vacío propio cuando hay filtros activos.
+- "Mes de registro" usa `clientes.created_at` (nuevo campo `creadoEl` en `Cliente`), convertido a la zona del salón con `mesDe()` (`lib/fechas.ts`).
+- Resumen "Mostrando X de Y clientes" + botón "Limpiar filtros" que aparecen solo cuando hay filtros activos.
+- Las opciones de los selects muestran el **conteo por mes** (`Enero · 3`) para que se vea de un vistazo qué meses tienen clientes. Si no hay ninguna fecha de nacimiento, el vacío de la tabla avisa "Todavía no hay fechas de nacimiento cargadas" y recuerda cargarlas desde Editar.
+
+### Fecha de nacimiento (columna existente `cumpleanos`)
+- **La tabla `clientes` ya tenía la columna `cumpleanos` (date).** No se crea ninguna columna nueva: Home lee `cumpleanos`, el registro y la edición guardan ahí. El campo de la app sigue llamándose `fechaNacimiento` internamente.
+- En un intento anterior se creó por error `fecha_nacimiento` y su migración; **ambas se eliminaron**. El usuario debe correr `alter table public.clientes drop column if exists fecha_nacimiento;` en Supabase (ver conversación).
+- `register-form.tsx`: los tres campos Día/Mes/Año tienen estado, validan una fecha real (31/02 y años futuros fallan) y guardan `cumpleanos` (opcional).
+- `admin-acciones.tsx`: campo nativo `type="date"` en el modal de editar, guardando en `cumpleanos`. Arriba de los campos, el modal muestra un resumen **"Cumpleaños: 10 de mayo de 1990"** (o "Sin fecha cargada") que se actualiza en vivo al cambiar la fecha; se formatea a mano para que la zona horaria no corra el día.
+- Los modales de editar y eliminar ahora usan el patrón `fixed inset-0 overflow-y-auto` + wrapper `flex min-h-full items-center justify-center p-4`: si el contenido es más alto que la ventana (desktop o móvil), **se puede scrollear** en vez de quedar cortado. El padding bajó a `p-5 sm:p-6` para ganar altura.
+- Efecto extra: `ClientesSync` ya recibe `fechaNacimiento`, así que las notificaciones de cumpleaños empiezan a funcionar con los datos existentes.
+
+### Verificación
+`tsc --noEmit` 0 · `next build` OK · `impeccable detect` `[]` · lint 4 errores / 3 warnings preexistentes (nada nuevo). **Sin verificación visual**: el navegador desktop de la sesión estaba desconectado (`browser.disconnected`); falta que el usuario revise desktop y móvil.
+
+## 0c. Sesión 2026-10-22 — deploy en Vercel y premios por correo
 
 ### Deploy
-- Proyecto en Vercel conectado al repo de GitHub (`Davidjoel12/AfroBroccoli`, branch `main`). **Push a `main` = deploy automático**; no hay `.vercel` ni `vercel.json` en el repo.
-- Variables en Vercel (Settings → Environment Variables, y **Redeploy** después de cambiarlas): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GMAIL_USER`, `GMAIL_APP_PASSWORD` y `EMAIL_FROM` (solo nombre visible). Alternativas ya soportadas por código: `BREVO_API_KEY` o `RESEND_API_KEY` (esta última para cuando haya dominio propio).
+- Proyecto en Vercel conectado al repo de GitHub (`Davidjoel12/AfroBroccoli`, branch `main`). **Push a `main` = deploy automático**. Desde 2026-11-06 hay `vercel.json` con el cron de cumpleaños.
+- Variables en Vercel (Settings → Environment Variables, y **Redeploy** después de cambiarlas): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `GMAIL_USER`, `GMAIL_APP_PASSWORD` y `EMAIL_FROM` (solo nombre visible). Alternativas ya soportadas por código: `BREVO_API_KEY` o `RESEND_API_KEY` (esta última para cuando haya dominio propio). Para el cron se agregan `SUPABASE_SERVICE_ROLE_KEY` y `CRON_SECRET` (ver sección 0).
 - Producción y local comparten el **mismo proyecto de Supabase**: los datos son los mismos. No hay base de datos de staging.
 
 ### Premios (reinicio de sellos + correo)
-- `components/qr/camera-scanner.tsx`: al escanear, `nuevaCantidad = selloPrevio + 1`. Si llega a la meta, se guarda **0** (el ciclo reinicia y esa visita no cuenta para el ciclo nuevo) y se dispara el correo de premio. La meta y la recompensa se leen **antes** de guardar (`metaDeCliente` / `recompensaDeCliente`).
-- `lib/premios.ts`: `nuevoFolio(codigo)` (formato `AB-1001-20261022-7F3K`) y `construirCorreoPremio()` (HTML + texto, con folio, recompensa, código, fecha y link a la tarjeta). El correo es el **comprobante** que la clienta muestra en el salón.
-- `app/api/premio/route.ts`: `POST /api/premio` envía por **Gmail SMTP** (`nodemailer`, `smtp.gmail.com:465`, `GMAIL_USER` + `GMAIL_APP_PASSWORD`) porque no hay dominio propio. `EMAIL_FROM` solo aporta el **nombre visible**; la dirección siempre es `GMAIL_USER`. También soporta **Brevo** (`BREVO_API_KEY`, reemplaza el remitente si es Gmail) y **Resend** (`RESEND_API_KEY`, requiere dominio) para el futuro. Sin proveedor responde 503 `sin_configurar`; el escáner muestra el aviso, ofrece **WhatsApp** de respaldo y permite **reintentar** el correo con el mismo folio.
+- `components/qr/camera-scanner.tsx`: al escanear, `nuevaCantidad = selloPrevio + 1`. Si llega a **meta - 1**, manda el aviso por correo (`/api/aviso`). Si llega a la meta, se guarda **0** (el ciclo reinicia y esa visita no cuenta para el ciclo nuevo) y se registra el premio pendiente; **ya no se manda correo automático**. La meta y la recompensa se leen **antes** de guardar (`config.meta` / `config.recompensa`; desde 2026-11-06 son las mismas para todos).
+- `lib/premios.ts`: `nuevoFolio(codigo)` (formato `AB-1001-20261022-7F3K`), `construirCorreoAviso()` (aviso de "te falta 1 sello") y `construirCorreoCumpleanos()`. `construirCorreoPremio()` queda para un reenvío manual del comprobante.
+- `lib/email.ts`: centraliza **Gmail SMTP** (`nodemailer`, `smtp.gmail.com:465`, `GMAIL_USER` + `GMAIL_APP_PASSWORD`), **Brevo** (`BREVO_API_KEY`) y **Resend** (`RESEND_API_KEY`). `EMAIL_FROM` solo aporta el **nombre visible** en Gmail; la dirección siempre es `GMAIL_USER`. Sin proveedor responde 503 `sin_configurar`.
+- `app/api/aviso/route.ts`: `POST /api/aviso` envía el correo de 4 sellos y valida que `sellos === meta - 1`. `app/api/premio/route.ts` sigue existiendo para un reenvío manual del comprobante con folio.
 - Si el cliente no tiene correo, el contador se reinicia igual y se muestra el aviso + botón de WhatsApp (decisión del usuario).
-- **Premios pendientes (tabla `premios`) — implementado 2026-10-23.** Como el contador vuelve a 0, la notificación ya no se deduce de `sellos >= meta`. Al completar la meta el escáner inserta una fila en `premios` (folio, recompensa, meta, membresía, `correo_enviado` / `correo_enviado_at`) y Home trae las pendientes (join a `clientes`) vía `PremiosSync` al provider. El panel muestra "Recompensa pendiente" con botón **Marcar como entregado** (`estado='entregado'`). ⚠️ **FALTA QUE EL USUARIO CORRA** `supabase/migrations/20261022000000_premios.sql` (Supabase → SQL Editor). Si no está corrida, la consulta de premios falla y la app sigue funcionando sin premios (no se rompe).
+- **Premios pendientes (tabla `premios`) — implementado 2026-10-23.** Como el contador vuelve a 0, la notificación ya no se deduce de `sellos >= meta`. Al completar la meta el escáner inserta una fila en `premios` (folio, recompensa, meta, `membresia=false`; `correo_enviado` queda en su default porque desde 2026-11-06 no se manda correo al completar) y Home trae las pendientes (join a `clientes`) vía `PremiosSync` al provider. El panel muestra "Recompensa pendiente" con botón **Marcar como entregado** (`estado='entregado'`). ⚠️ **FALTA QUE EL USUARIO CORRA** `supabase/migrations/20261022000000_premios.sql` (Supabase → SQL Editor). Si no está corrida, la consulta de premios falla y la app sigue funcionando sin premios (no se rompe).
 
-## 0b. Sesión 2026-10-18 — qué se hizo (leer primero)
+## 0d. Sesión 2026-10-18 — qué se hizo (leer primero)
 
 Cinco pedidos del usuario, todos implementados:
 
@@ -73,7 +333,7 @@ Cinco pedidos del usuario, todos implementados:
 1b. **Ajustes de la revisión del 18/10** (pedidos del usuario sobre lo anterior):
    - La vista previa de Configuración **ya no consulta clientes**: quedó fija con `EJEMPLO = { nombre: "Swanny", codigo: "AB-0000", sellos: 2 }` en `card-customizer.tsx`. `AB-0000` está fuera del rango que genera el registro (`AB-1000`–`AB-9999`), así que ese QR nunca lleva a una tarjeta real. Se fue el `useMemo`, el dropdown y el `select`.
    - **Autoregistro redirige a la tarjeta**: `RegisterForm` tiene `redirigir`, activo **solo en `/registro`** (público). Tras guardar, muestra el código ~900 ms y empuja a `rutaTarjeta(codigo)`. En `/qr` **no** redirige: el staff necesita quedarse para seguir registrando.
-2. **Metas separadas por tipo de cliente.** `lib/config.ts` es la única fuente de verdad (`ConfigTarjeta`, `leerConfigTarjeta`, `guardarConfigTarjeta`, `metaDeCliente`, `recompensaDeCliente`). `config.meta` = regulares, `config.meta_membresia` = miembros (igual para `recompensa` / `recompensa_membresia`). El color de acento sigue siendo uno solo. Home calcula `metaSellos` por cliente → tablas, modal de editar (tope) y escáner usan la meta que le toca; cambiar la membresía con `ToggleMembresia` re-renderiza el server y el cliente ve su meta nueva al instante.
+2. **~~Metas separadas por tipo de cliente.~~ (reemplazado 2026-11-06).** Ahora hay **una sola tarjeta de sellos** para todos: `lib/config.ts` solo maneja `meta`, `recompensa`, `colorAcento` y `logoUrl`. Los miembros usan la misma meta y recompensa que los regulares; la membresía es una suscripción mensual aparte.
    - ⚠️ **FALTA QUE EL USUARIO CORRA** `supabase/migrations/20261018090000_metas_por_tipo_y_tarjeta_publica.sql` (Supabase → SQL Editor). Hasta entonces la app **no se rompe**: `leerConfigTarjeta` reintenta con las columnas viejas y `guardarConfigTarjeta` devuelve `parcial: true` (la UI muestra un aviso ámbar, no un error).
 3. **Bug de las pills de `/qr` en inglés.** Causa: el estado guardaba la etiqueta ya traducida (`"Form"`) y la comparación contra `"Formulario"` fallaba → siempre caía en QR-Cámara. Arreglo de raíz: `PillTabs` ahora recibe `tabs: { id, label }[]` (`id` estable = español, `label` = traducido) y `qr-view.tsx` guarda el `id`.
 4. **Separación de clientes en la tabla (móvil).** Un solo divisor: `divide-ink/15` entre clientes, **fuera** el `border-t border-ink/10` que separaba los botones editar/eliminar (ese era el segundo gris que confundía). Mismo escalón en el encabezado y en la paginación.
