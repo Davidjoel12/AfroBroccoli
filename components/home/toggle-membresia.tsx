@@ -34,6 +34,11 @@ export function ToggleMembresia({
     <button
       onClick={alternar}
       disabled={cargando}
+      title={
+        membresia
+          ? t("Quitar membresía (sigue como cliente regular)")
+          : t("Hacer miembro (sigue acumulando sellos)")
+      }
       className="rounded-full border border-ink/15 bg-white px-3 py-1 text-xs font-semibold text-ink transition-colors hover:bg-cream disabled:opacity-50"
     >
       {cargando ? t("Guardando…") : membresia ? t("Quitar membresía") : t("Hacer miembro")}

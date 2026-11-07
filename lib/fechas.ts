@@ -40,3 +40,32 @@ export function hoyCivil(): Date {
 export function claveDeCivil(fechaCivil: Date): string {
   return fechaCivil.toISOString().slice(0, 10);
 }
+
+/** Nombres de los meses, en orden. El índice coincide con el mes de JavaScript (0–11). */
+export const MESES = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+] as const;
+
+/**
+ * Mes (0–11) de una fecha `YYYY-MM-DD` o de un timestamp ISO.
+ * Las fechas civiles (cumpleaños, `date` de Postgres) se leen tal cual; los
+ * timestamps pasan por la zona del salón para que un registro de la noche no
+ * caiga en el mes siguiente.
+ */
+export function mesDe(fecha: string | null | undefined): number | null {
+  if (!fecha) return null;
+  const clave = fecha.includes("T") ? claveDia(fecha) : fecha.slice(0, 10);
+  const mes = Number(clave.slice(5, 7));
+  return Number.isInteger(mes) && mes >= 1 && mes <= 12 ? mes - 1 : null;
+}

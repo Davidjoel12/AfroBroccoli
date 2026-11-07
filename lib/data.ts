@@ -6,7 +6,9 @@ export type SerieVisitas = Record<
   { labels: string[]; regulares: number[]; membresia: number[] }
 >;
 
-// Construye las series de visitas a partir de filas reales (visitas + membresía del cliente).
+// Construye las series de visitas a partir de filas reales.
+// `membresia` es de la VISITA (se guardó al escanear), no del cliente actual:
+// así una clienta que entra o sale de la membresía no reescribe el histórico.
 // Los días se calculan en la zona horaria del salón (America/Panama), no en la
 // del servidor, para que una visita de la noche no caiga en el día siguiente.
 export function construirSeriesVisitas(

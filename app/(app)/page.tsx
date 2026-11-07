@@ -4,11 +4,15 @@ import { MetricCard } from "@/components/home/metric-card";
 import { VisitsChart } from "@/components/home/charts";
 import { ClientsTable } from "@/components/home/clients-table";
 import { WelcomeCard, DistributionCard } from "@/components/home/home-blocks";
+import {
+  FiltrosClientesBar,
+  FiltrosClientesProvider,
+} from "@/components/home/clientes-filtros";
 import { construirSeriesVisitas } from "@/lib/data";
 import { claveDia } from "@/lib/fechas";
 import { createClient } from "@/lib/supabase-server";
 import { Cliente, Premio } from "@/lib/types";
-import { leerConfigTarjeta, metaDeCliente } from "@/lib/config";
+import { leerConfigTarjeta } from "@/lib/config";
 import { ClientesSync } from "@/components/notifications/clientes-sync";
 import { PremiosSync } from "@/components/notifications/premios-sync";
 
@@ -23,13 +27,22 @@ export default async function Home() {
     : { data: null };
   const esAdmin = perfil?.role === "admin";
 
+  // `cumpleanos` ya existe en la tabla (date). `created_at` alimenta el filtro
+  // "Mes de registro" y `cumpleanos` el de "Mes de cumpleaños".
   const { data: clientesData } = await supabase
     .from("clientes")
-    .select("id, codigo, nombre, email, pais, telefono, membresia, sellos(cantidad)");
+    .select(
+      "id, codigo, nombre, email, pais, telefono, membresia, created_at, cumpleanos, sellos(cantidad)"
+    );
 
-  const { data: visitasData } = await supabase
+  // `membresia` es de la VISITA, no del cliente actual: así el histórico no
+  // cambia si la clienta entra o sale de la membresía.
+  const { data: visitasData, error: visitasError } = await supabase
     .from("visitas")
-    .select("created_at, cliente_id, clientes(membresia)");
+    .select("created_at, cliente_id, membresia");
+  if (visitasError) {
+    console.error("[visitas]", visitasError.code, visitasError.message);
+  }
 
   // Premios pendientes de entregar. Si la tabla todavía no existe (migración sin
   // correr), la consulta falla y simplemente no se muestran premios.
@@ -39,13 +52,17 @@ export default async function Home() {
     .eq("estado", "pendiente")
     .order("created_at", { ascending: false });
 
-  // Config de la tarjeta: cada tipo de cliente tiene su meta (regular / miembro)
+  // Una sola tarjeta de sellos para todos, miembros incluidos.
   const config = await leerConfigTarjeta(supabase);
   const logoUrl = config.logoUrl;
 
   const visitasPorCliente = new Map<string, number>();
+  const ultimaVisitaPorCliente = new Map<string, string>();
   for (const v of visitasData ?? []) {
-    if (v.cliente_id) visitasPorCliente.set(v.cliente_id, (visitasPorCliente.get(v.cliente_id) ?? 0) + 1);
+    if (!v.cliente_id) continue;
+    visitasPorCliente.set(v.cliente_id, (visitasPorCliente.get(v.cliente_id) ?? 0) + 1);
+    const ultima = ultimaVisitaPorCliente.get(v.cliente_id);
+    if (!ultima || v.created_at > ultima) ultimaVisitaPorCliente.set(v.cliente_id, v.created_at);
   }
 
   const clientes: Cliente[] = (clientesData ?? []).map((c) => {
@@ -63,14 +80,18 @@ export default async function Home() {
       telefono,
       telefonoFormato: c.telefono ?? "",
       sellos,
-      metaSellos: metaDeCliente(c.membresia, config),
-      membresia: c.membresia,
+      metaSellos: config.meta,
+      membresia: Boolean(c.membresia),
       visitas: visitasPorCliente.get(c.id) ?? 0,
+      fechaNacimiento: c.cumpleanos ?? null,
+      creadoEl: c.created_at ?? null,
+      ultimaVisita: ultimaVisitaPorCliente.get(c.id) ?? null,
     };
   });
 
-  const regulares = clientes.filter((c) => !c.membresia);
-  const membresia = clientes.filter((c) => c.membresia);
+  // Un miembro no reemplaza al cliente regular: aparece en las dos tablas.
+  const conMembresia = clientes.filter((c) => c.membresia);
+  const sinMembresia = clientes.filter((c) => !c.membresia);
 
   const premios: Premio[] = (premiosData ?? []).map((p) => {
     const join = p.clientes as unknown;
@@ -96,16 +117,14 @@ export default async function Home() {
   ).length;
 
   const sellosTotales = clientes.reduce((acc, c) => acc + c.sellos, 0);
-  const distribucion = [regulares.length, membresia.length];
+  // Distribución real: clientes sin membresía vs. con membresía (no se duplican).
+  const distribucion = [sinMembresia.length, conMembresia.length];
   const metricas = { clientesTotales: clientes.length, visitasHoy, sellosTotales };
 
-  const visitasParaSerie = (visitasData ?? []).map((v) => {
-    const join = v.clientes as unknown;
-    const membresiaJoin = Array.isArray(join)
-      ? (join[0] as { membresia: boolean } | undefined)?.membresia
-      : (join as { membresia: boolean } | null)?.membresia;
-    return { created_at: v.created_at, membresia: membresiaJoin ?? false };
-  });
+  const visitasParaSerie = (visitasData ?? []).map((v) => ({
+    created_at: v.created_at,
+    membresia: v.membresia ?? false,
+  }));
   const series = construirSeriesVisitas(visitasParaSerie);
 
   // Origen real del sitio (localhost, túnel de pruebas o Vercel): se usa para armar
@@ -117,49 +136,61 @@ export default async function Home() {
   const origen = `${proto}://${host}`;
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* ===== Bienvenida (móvil-first: sala arriba de todo) ===== */}
-      <WelcomeCard logoUrl={logoUrl} />
+    <FiltrosClientesProvider clientes={clientes}>
+      <div className="flex flex-col gap-6">
+        {/* ===== Bienvenida + barra de filtros (en móvil se apilan) ===== */}
+        <div className="grid gap-4 xl:grid-cols-[minmax(260px,0.85fr)_minmax(0,2.15fr)]">
+          <WelcomeCard logoUrl={logoUrl} />
+          <FiltrosClientesBar />
+        </div>
 
-      {/* ===== Métricas ===== */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <MetricCard
-          label="Clientes Totales"
-          value={metricas.clientesTotales}
-          icon={<UsersIcon />}
-        />
-        <MetricCard
-          label="Visitas hoy"
-          value={metricas.visitasHoy}
-          icon={<CalendarIcon />}
-        />
-        <MetricCard
-          label="Sellos Totales"
-          value={metricas.sellosTotales}
-          icon={<StampIcon />}
-        />
+        {/* ===== Métricas ===== */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <MetricCard
+            label="Clientes Totales"
+            value={metricas.clientesTotales}
+            icon={<UsersIcon />}
+          />
+          <MetricCard
+            label="Visitas hoy"
+            value={metricas.visitasHoy}
+            icon={<CalendarIcon />}
+          />
+          <MetricCard
+            label="Sellos Totales"
+            value={metricas.sellosTotales}
+            icon={<StampIcon />}
+          />
+        </div>
+
+        {/* ===== Gráficos (se apilan en móvil) ===== */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <DistributionCard data={distribucion} />
+
+          <Card className="min-w-0">
+            <VisitsChart series={series} />
+          </Card>
+        </div>
+
+        {/* 2 columnas solo a partir de 1536px: con menos ancho la tabla de 7 columnas
+            se cortaba y obligaba a scrollear dentro de la tarjeta */}
+        <div className="grid gap-6 2xl:grid-cols-2">
+          <ClientsTable titulo="Clientes" clientes={clientes} esAdmin={esAdmin} origen={origen} />
+          <ClientsTable
+            titulo="Clientes membresía"
+            clientes={conMembresia}
+            esAdmin={esAdmin}
+            origen={origen}
+            mostrarBadgeMiembro={false}
+            mostrarSellos={false}
+          />
+        </div>
+
+        {/* Sincroniza clientes y premios pendientes con el provider de notificaciones */}
+        <ClientesSync clientes={clientes} />
+        <PremiosSync premios={premios} />
       </div>
-
-      {/* ===== Gráficos (se apilan en móvil) ===== */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <DistributionCard data={distribucion} />
-
-        <Card className="min-w-0">
-          <VisitsChart series={series} />
-        </Card>
-      </div>
-
-      {/* 2 columnas solo a partir de 1536px: con menos ancho la tabla de 7 columnas
-          se cortaba y obligaba a scrollear dentro de la tarjeta */}
-      <div className="grid gap-6 2xl:grid-cols-2">
-        <ClientsTable titulo="Clientes regulares" clientes={regulares} esAdmin={esAdmin} origen={origen} />
-        <ClientsTable titulo="Clientes membresía" clientes={membresia} esAdmin={esAdmin} origen={origen} />
-      </div>
-
-      {/* Sincroniza clientes y premios pendientes con el provider de notificaciones */}
-      <ClientesSync clientes={clientes} />
-      <PremiosSync premios={premios} />
-    </div>
+    </FiltrosClientesProvider>
   );
 }
 

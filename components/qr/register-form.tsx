@@ -18,6 +18,42 @@ const PREFIJOS_UNICOS = Array.from(
 const OPCIONES_PAIS = PAISES.map((p) => ({ value: p.iso, label: p.nombre }));
 
 /**
+ * Arma la fecha `YYYY-MM-DD` desde los tres campos.
+ * · todo vacío → no se guarda fecha (es opcional)
+ * · incompleta o imposible (31/02, año futuro) → `invalida`
+ */
+function armarFechaNacimiento(
+  dia: string,
+  mes: string,
+  anio: string
+): { iso: string | null; invalida: boolean } {
+  if (!dia && !mes && !anio) return { iso: null, invalida: false };
+  if (!dia || !mes || !anio) return { iso: null, invalida: true };
+
+  const d = Number(dia);
+  const m = Number(mes);
+  const a = Number(anio);
+  if (!Number.isInteger(d) || !Number.isInteger(m) || !Number.isInteger(a)) {
+    return { iso: null, invalida: true };
+  }
+
+  const fecha = new Date(Date.UTC(a, m - 1, d));
+  const valida =
+    fecha.getUTCFullYear() === a &&
+    fecha.getUTCMonth() === m - 1 &&
+    fecha.getUTCDate() === d &&
+    a >= 1900 &&
+    fecha.getTime() <= Date.now();
+
+  if (!valida) return { iso: null, invalida: true };
+
+  return {
+    iso: `${a}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+    invalida: false,
+  };
+}
+
+/**
  * Formulario de registro de clientes.
  *
  * `redirigir` solo se activa en el registro público (/registro, el que escanea
@@ -44,6 +80,9 @@ export function RegisterForm({
   const [telefono, setTelefono] = useState("");
   const [nacionalidad, setNacionalidad] = useState("pa");
   const [membresia, setMembresia] = useState(false);
+  const [diaNacimiento, setDiaNacimiento] = useState("");
+  const [mesNacimiento, setMesNacimiento] = useState("");
+  const [anioNacimiento, setAnioNacimiento] = useState("");
 
   // Autoregistro: al terminar, la clienta pasa a su propia tarjeta (/c/AB-0000).
   // El aviso de "registrado" queda un instante para que vea que salió bien.
@@ -55,6 +94,13 @@ export function RegisterForm({
 
   async function registrar(e: React.FormEvent) {
     e.preventDefault();
+
+    const fecha = armarFechaNacimiento(diaNacimiento, mesNacimiento, anioNacimiento);
+    if (fecha.invalida) {
+      setError(t("Revisá la fecha de nacimiento: día, mes y año."));
+      return;
+    }
+
     setGuardando(true);
     setError("");
 
@@ -62,11 +108,19 @@ export function RegisterForm({
     const codigo = `AB-${Math.floor(1000 + Math.random() * 9000)}`;
     const telefonoCompleto = `${codigoPais} ${telefono}`;
 
+    const datos = {
+      codigo,
+      nombre,
+      email: correo,
+      telefono: telefonoCompleto,
+      pais: iso,
+      membresia,
+      ...(fecha.iso ? { cumpleanos: fecha.iso } : {}),
+    };
+
     // Sin .select(): el registro público no tiene permiso de lectura.
     // La fila de sellos la crea el trigger trg_crear_sellos en la base.
-    const { error: errCliente } = await supabase
-      .from("clientes")
-      .insert({ codigo, nombre, email: correo, telefono: telefonoCompleto, pais: iso, membresia });
+    const { error: errCliente } = await supabase.from("clientes").insert(datos);
 
     if (errCliente) {
       setError(t("No se pudo registrar. Verificá los datos e intentá de nuevo."));
@@ -80,6 +134,9 @@ export function RegisterForm({
     setNombre("");
     setCorreo("");
     setTelefono("");
+    setDiaNacimiento("");
+    setMesNacimiento("");
+    setAnioNacimiento("");
   }
 
   return (
@@ -146,9 +203,33 @@ export function RegisterForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("Fecha de Nacimiento")}>
             <div className="grid grid-cols-3 gap-2">
-              <Input placeholder={t("Día")} inputMode="numeric" />
-              <Input placeholder={t("Mes")} inputMode="numeric" />
-              <Input placeholder={t("Año")} inputMode="numeric" />
+              <Input
+                aria-label={t("Día")}
+                placeholder={t("Día")}
+                inputMode="numeric"
+                autoComplete="bday-day"
+                maxLength={2}
+                value={diaNacimiento}
+                onChange={(e) => setDiaNacimiento(e.target.value.replace(/\D/g, "").slice(0, 2))}
+              />
+              <Input
+                aria-label={t("Mes")}
+                placeholder={t("Mes")}
+                inputMode="numeric"
+                autoComplete="bday-month"
+                maxLength={2}
+                value={mesNacimiento}
+                onChange={(e) => setMesNacimiento(e.target.value.replace(/\D/g, "").slice(0, 2))}
+              />
+              <Input
+                aria-label={t("Año")}
+                placeholder={t("Año")}
+                inputMode="numeric"
+                autoComplete="bday-year"
+                maxLength={4}
+                value={anioNacimiento}
+                onChange={(e) => setAnioNacimiento(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              />
             </div>
           </Field>
           <Field label={t("Nacionalidad")}>
@@ -163,14 +244,19 @@ export function RegisterForm({
         </div>
 
         {mostrarMembresia && (
-          <label className="flex items-center gap-2 text-sm text-muted">
+          <label className="flex items-start gap-2 text-sm text-muted">
             <input
               type="checkbox"
-              className="accent-[#6FC22D]"
+              className="mt-1 accent-[#6FC22D]"
               checked={membresia}
               onChange={(e) => setMembresia(e.target.checked)}
             />
-            <span>{t("Cliente con membresía")}</span>
+            <span>
+              <span className="block font-medium text-ink">{t("Cliente con membresía")}</span>
+              <span className="block text-xs">
+                {t("Se suma a la tarjeta regular: seguís acumulando sellos.")}
+              </span>
+            </span>
           </label>
         )}
 

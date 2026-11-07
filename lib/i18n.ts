@@ -52,12 +52,49 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Visitas": "Visits",
   "Regulares": "Regular",
   "Membresía": "Membership",
+  "Visitas regulares": "Regular visits",
+  "Visitas de miembros": "Member visits",
+  "Sin membresía": "Without membership",
+  "Con membresía": "With membership",
+  "Clientes": "Clients",
   "Clientes regulares": "Regular clients",
   "Clientes membresía": "Membership clients",
   "día": "day",
   "dia": "day", // valor real de Periodo (sin tilde)
   "semana": "week",
   "mes": "month",
+
+  // ===== Filtros de clientes (Home) =====
+  "Buscar cliente": "Search client",
+  "Nombre, teléfono, correo o código": "Name, phone, email or code",
+  "Limpiar búsqueda": "Clear search",
+  "Mes de registro": "Sign-up month",
+  "Mes de cumpleaños": "Birthday month",
+  "Todos": "All",
+  "Mostrando": "Showing",
+  "clientes": "clients",
+  "Limpiar filtros": "Clear filters",
+  "Ningún cliente coincide con los filtros.": "No clients match the filters.",
+  "Probá con otro nombre, mes o limpiá los filtros.":
+    "Try another name or month, or clear the filters.",
+  "Todavía no hay fechas de nacimiento cargadas.":
+    "There are no birth dates on file yet.",
+  "Agregá la fecha desde el botón Editar de cada cliente.":
+    "Add it from each client's Edit button.",
+  "No hay fechas de registro para filtrar.":
+    "There are no sign-up dates to filter by.",
+  "Enero": "January",
+  "Febrero": "February",
+  "Marzo": "March",
+  "Abril": "April",
+  "Mayo": "May",
+  "Junio": "June",
+  "Julio": "July",
+  "Agosto": "August",
+  "Septiembre": "September",
+  "Octubre": "October",
+  "Noviembre": "November",
+  "Diciembre": "December",
 
   // ===== Tablas =====
   "Ordenar": "Sort",
@@ -77,14 +114,33 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Eliminar": "Delete",
   "Hacer miembro": "Make member",
   "Quitar membresía": "Remove membership",
+  "Hacer miembro (sigue acumulando sellos)": "Make member (they keep earning stamps)",
+  "Quitar membresía (sigue como cliente regular)": "Remove membership (they remain a regular client)",
   "Guardando…": "Saving…",
   "Enviar tarjeta de": "Send card of",
 
   // ===== Acciones de admin =====
   "Editar cliente": "Edit client",
   "Los cambios se guardan al instante.": "Changes save instantly.",
+  "Cliente con membresía": "Client with membership",
+  "Se suma a la tarjeta regular: seguís acumulando sellos.":
+    "It adds to your regular card: you keep earning stamps.",
+  "Tarjeta de sellos": "Stamp card",
+  "La membresía es una suscripción mensual aparte. Los miembros usan esta misma tarjeta y siguen acumulando sellos.":
+    "Membership is a separate monthly subscription. Members use this same card and keep earning stamps.",
   "Nombre completo": "Full name",
+  "Fecha de nacimiento": "Date of birth",
+  "Cumpleaños": "Birthday",
+  "Sin fecha cargada": "No date on file",
+  "Opcional. Se usa para el filtro y las notificaciones de cumpleaños.":
+    "Optional. Used for the birthday filter and notifications.",
   "Sellos acumulados": "Accumulated stamps",
+  "Si ponés la meta, se genera un premio pendiente y el contador vuelve a 0.":
+    "If you enter the goal, a pending reward is created and the counter goes back to 0.",
+  "Los datos se guardaron, pero no se pudo generar el premio. Los sellos no se modificaron.":
+    "The details were saved, but the reward couldn't be created. Stamps were not changed.",
+  "Los datos se guardaron, pero no se pudieron actualizar los sellos. Intentá de nuevo.":
+    "The details were saved, but the stamps couldn't be updated. Try again.",
   "Cancelar": "Cancel",
   "Guardar cambios": "Save changes",
   "Eliminar cliente": "Delete client",
@@ -122,13 +178,14 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Número de teléfono": "Phone number",
   "Fecha de Nacimiento": "Date of birth",
   "Nacionalidad": "Nationality",
-  "Cliente con membresía": "Membership client",
   "✅ ¡Cliente registrado! Ya puede escanear el QR para entrar.":
     "✅ Client registered! They can now scan the QR to check in.",
   "Acepto el tratamiento de datos personales según la ley 81 de Panamá.":
     "I agree to the personal data treatment under Panama's Law 81.",
   "No se pudo registrar. Verificá los datos e intentá de nuevo.":
     "Couldn't register. Check the details and try again.",
+  "Revisá la fecha de nacimiento: día, mes y año.":
+    "Check the birth date: day, month and year.",
   "✅ ¡Listo! Este es tu código de cliente. Te llevamos a tu tarjeta.":
     "✅ All done! Here's your client code. Taking you to your card.",
   "Ver mi tarjeta ahora ↗": "See my card now ↗",
@@ -163,17 +220,20 @@ export const DICCIONARIO_EN: Record<string, string> = {
     "Business details are managed by the salon admin. Ask the owner if you need something changed.",
   "Tu nombre": "Your name",
   "Tu correo": "Your email",
-  "Elegí el color de acento y la recompensa de tu programa. Cada tipo de cliente tiene su propia meta de sellos.":
-    "Pick your accent color and your rewards. Each client type has its own stamp goal.",
+  "Elegí el color de acento y la recompensa de tu programa. Todos los clientes, incluidos los miembros, usan la misma tarjeta de sellos.":
+    "Pick your accent color and reward. All clients, including members, use the same stamp card.",
   "✅ Tarjeta de cliente actualizada.": "✅ Client card updated.",
   "No se pudieron guardar los cambios. Intentá de nuevo.":
     "Couldn't save the changes. Try again.",
-  "Se guardó, pero falta aplicar la migración en Supabase para poder separar la meta y la recompensa de los clientes miembros.":
-    "Saved, but the Supabase migration is still missing, so the member clients' goal and reward can't be split yet.",
+  "La tarjeta se guardó, pero no se pudieron regularizar los sellos. Corré el SQL de normalización en Supabase.":
+    "The card was saved, but the stamps couldn't be normalized. Run the normalization SQL in Supabase.",
+  "tarjetas regularizadas: sellos en 0 y premios pendientes.":
+    "cards normalized: stamps back to 0 and pending rewards created.",
+  "No había tarjetas en o por encima de la nueva meta.":
+    "No cards were at or above the new goal.",
   "Solo el administrador puede modificar la tarjeta. Estás viendo la configuración actual.":
     "Only the admin can modify the card. You're seeing the current settings.",
   "Ej. 1 servicio gratis": "E.g. 1 free service",
-  "Clientes miembros": "Member clients",
   "Así ve su tarjeta el cliente": "This is how the client sees their card",
   "Es la misma tarjeta que el cliente abre desde el link de WhatsApp.":
     "This is the exact card the client opens from the WhatsApp link.",
@@ -228,6 +288,15 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "No se pudo enviar el correo.": "The email could not be sent.",
   "Reintentar correo": "Retry email",
   "Enviar por WhatsApp": "Send via WhatsApp",
+  "Aviso de premio": "Prize notice",
+  "Enviando aviso…": "Sending notice…",
+  "Aviso enviado a": "Notice sent to",
+  "No se pudo enviar el aviso.": "The notice could not be sent.",
+  "Reintentar aviso": "Retry notice",
+  "Enviar aviso por WhatsApp": "Send notice via WhatsApp",
+  "Queda pendiente en la campana hasta que lo entregues.":
+    "It stays pending in the bell until you deliver it.",
+  "Casi premio": "Almost there",
 };
 
 export type Idioma = "es" | "en";
