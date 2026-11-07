@@ -50,8 +50,8 @@ export function VisitsChart({ series }: { series: SerieVisitas }) {
           data={{
             labels: dataSet.labels,
             datasets: [
-              { label: t("Regulares"), data: dataSet.regulares, backgroundColor: PRIMARY, borderRadius: 6, barThickness: 14 },
-              { label: t("Membresía"), data: dataSet.membresia, backgroundColor: GOLD, borderRadius: 6, barThickness: 14 },
+              { label: t("Visitas regulares"), data: dataSet.regulares, backgroundColor: PRIMARY, borderRadius: 6, barThickness: 14 },
+              { label: t("Visitas de miembros"), data: dataSet.membresia, backgroundColor: GOLD, borderRadius: 6, barThickness: 14 },
             ],
           }}
           options={{
@@ -82,7 +82,7 @@ export function DistributionChart({ data }: { data: number[] }) {
     <div className="relative h-56 w-full">
       <Doughnut
         data={{
-          labels: [t("Regulares"), t("Membresía")],
+          labels: [t("Sin membresía"), t("Con membresía")],
           datasets: [{ data, backgroundColor: [PRIMARY, GOLD], borderWidth: 0 }],
         }}
         options={{

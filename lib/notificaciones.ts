@@ -3,10 +3,11 @@ import type { Cliente, Premio } from "@/lib/types";
 // ============================================================================
 // Sistema de notificaciones del salón AfroBroccoli
 //
-// Tres tipos de notificación:
-//   1. Cumpleaños próximos (2 días por defecto)
-//   2. Premio pendiente de entregar (cliente completó su meta de sellos)
-//   3. Cliente inactivo (no ha vuelto en 1 mes 15 días) → reagendar cita
+// Cuatro tipos de notificación:
+//   1. Casi premio (al cliente le falta 1 sello para la meta)
+//   2. Cumpleaños próximos (2 días por defecto)
+//   3. Premio pendiente de entregar (cliente completó su meta de sellos)
+//   4. Cliente inactivo (no ha vuelto en 1 mes 15 días) → reagendar cita
 //
 // Los umbrales son configurables. Mientras el backend no exista, esta
 // librería funciona sobre los datos de `Cliente` que ya llegan de Supabase.
@@ -14,7 +15,11 @@ import type { Cliente, Premio } from "@/lib/types";
 // completar la meta, así que no se pueden deducir de `sellos`).
 // ============================================================================
 
-export type TipoNotificacion = "cumpleanos" | "premio_pendiente" | "inactividad";
+export type TipoNotificacion =
+  | "casi_premio"
+  | "cumpleanos"
+  | "premio_pendiente"
+  | "inactividad";
 
 export type Notificacion = {
   id: string;
@@ -74,6 +79,7 @@ export function generarNotificaciones(
   hoy.setHours(0, 0, 0, 0);
 
   const notificaciones: Notificacion[] = [];
+  const conPremioPendiente = new Set(premios.map((p) => p.clienteId));
 
   // ─── 1. Premios pendientes de entregar ───
   // Se generan desde `premios` (no desde `sellos`, que ya volvieron a 0).
@@ -94,7 +100,29 @@ export function generarNotificaciones(
   }
 
   for (const c of clientes) {
-    // ─── 2. Cumpleaños próximos ───
+    // ─── 2. Casi premio: falta exactamente 1 sello ───
+    // No se duplica con la recompensa pendiente: si ya hay un premio sin
+    // entregar, ese aviso tiene prioridad.
+    if (
+      !conPremioPendiente.has(c.id) &&
+      c.metaSellos > 1 &&
+      c.sellos === c.metaSellos - 1
+    ) {
+      notificaciones.push({
+        id: `casi-premio-${c.id}`,
+        tipo: "casi_premio",
+        clienteId: c.id,
+        clienteNombre: c.nombre,
+        clienteCodigo: c.codigo,
+        telefono: c.telefonoFormato ?? c.telefono ?? undefined,
+        titulo: "Casi premio",
+        cuerpo: `${c.nombre} llegó a ${c.sellos}/${c.metaSellos}. Le falta 1 sello para su premio.`,
+        leida: false,
+        fecha: hoy.toISOString(),
+      });
+    }
+
+    // ─── 3. Cumpleaños próximos ───
     if (c.fechaNacimiento) {
       const proximo = proximoCumpleanos(c.fechaNacimiento);
       const dias = diasHasta(proximo, hoy);
@@ -116,7 +144,7 @@ export function generarNotificaciones(
       }
     }
 
-    // ─── 3. Inactividad (no ha vuelto en X días) ───
+    // ─── 4. Inactividad (no ha vuelto en X días) ───
     if (c.ultimaVisita) {
       const ultima = new Date(c.ultimaVisita);
       const diasInactivo = diasHasta(hoy, ultima);
@@ -145,6 +173,8 @@ export function generarNotificaciones(
 /** Icono por tipo de notificación (SVG embebido). */
 export function iconoPorTipo(tipo: TipoNotificacion): string {
   switch (tipo) {
+    case "casi_premio":
+      return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
     case "cumpleanos":
       return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.2 17.9c-1.2-.8-2.6-1.2-4.1-1.2a5.8 5.8 0 0 0-5.8 5.8c0 .9.2 1.8.6 2.5.2-.7.6-1.3 1-1.9 1.8-2.8 2.6-4.9 2.6-4.9s-2.5-.9-3.6-.4c-.8.4-1.4 1.1-1.4 1.9s1 1.1 1.7 1c1.3-.3 1.5-.6 1.6-1 .2-.6.8-1.2 1-1.9a5.8 5.8 0 0 0-5.8-5.8c-1.5 0-3 .4-4.1 1.2-1.5.9-2.2 2.3-1.9 3.9.3 1.6 1.7 2.9 3.4 3.2 1.1.2 2.3-.2 3.1-1 .5-.5.8-1.2.8-1.8 0-1-.4-1.9-1-2.6a5.4 5.4 0 0 1 1-3.8c1.8-.9 3.6-1.2 5.3-1s3.7.2 5.3 1c.3.2.5.5.6.9.4 1.1-.2 2.2-1.4 3z"/><circle cx="12" cy="13" r="1"/></svg>`;
     case "premio_pendiente":
@@ -159,6 +189,8 @@ export function iconoPorTipo(tipo: TipoNotificacion): string {
 /** Color de acento por tipo de notificación. */
 export function colorPorTipo(tipo: TipoNotificacion): string {
   switch (tipo) {
+    case "casi_premio":
+      return "#D99A00"; // gold
     case "cumpleanos":
       return "#FF66C4"; // accent (rosa)
     case "premio_pendiente":

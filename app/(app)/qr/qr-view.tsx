@@ -5,7 +5,6 @@ import { PillTabs } from "@/components/ui/pill-tabs";
 import { useT } from "@/components/i18n/language-provider";
 import { MyQrCard } from "@/components/qr/my-qr-card";
 import { RegisterForm } from "@/components/qr/register-form";
-import { ClientSearch } from "@/components/qr/client-search";
 import { CameraScanner } from "@/components/qr/camera-scanner";
 
 // El id del tab es siempre el texto en español (fuente de verdad del i18n) y la
@@ -14,7 +13,7 @@ import { CameraScanner } from "@/components/qr/camera-scanner";
 const TABS = ["Formulario", "QR-Cámara"] as const;
 type Tab = (typeof TABS)[number];
 
-export default function QrView({ origen }: { origen: string }) {
+export default function QrView() {
   const t = useT();
   const [tab, setTab] = useState<Tab>("Formulario");
 
@@ -35,7 +34,6 @@ export default function QrView({ origen }: { origen: string }) {
       <div className="hidden gap-6 lg:grid lg:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-6">
           <MyQrCard />
-          <ClientSearch origen={origen} />
         </div>
         <div className="flex min-w-0 flex-col gap-6">
           <RegisterForm />
@@ -48,7 +46,6 @@ export default function QrView({ origen }: { origen: string }) {
         {tab === "Formulario" ? (
           <div className="flex flex-col gap-6">
             <RegisterForm />
-            <ClientSearch origen={origen} />
           </div>
         ) : (
           <div className="flex flex-col gap-6">

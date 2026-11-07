@@ -5,6 +5,7 @@ import { Cliente } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import { ToggleMembresia } from "./toggle-membresia";
 import { AdminAcciones } from "./admin-acciones";
+import { useFiltrosClientes } from "./clientes-filtros";
 import { useT } from "@/components/i18n/language-provider";
 import { enlaceTarjeta, enlaceWhatsapp, mensajeTarjeta } from "@/lib/config";
 import { cn } from "@/lib/utils";
@@ -120,17 +121,47 @@ export function ClientsTable({
   clientes,
   esAdmin = false,
   origen,
+  mostrarBadgeMiembro = true,
+  mostrarSellos = true,
 }: {
   titulo: string;
   clientes: Cliente[];
   esAdmin?: boolean;
   /** Origen del sitio (http://localhost:3000, el túnel, etc.) para los links de WhatsApp */
   origen: string;
+  /** En la tabla de membresía el badge sería redundante en todas las filas. */
+  mostrarBadgeMiembro?: boolean;
+  /** La tabla de membresía no muestra sellos: solo la de clientes. */
+  mostrarSellos?: boolean;
 }) {
   const [orden, setOrden] = useState<Orden>("az");
   const [pagina, setPagina] = useState(1);
   const t = useT();
-  const clientesOrdenados = ordenar(clientes, orden);
+  // En la tabla de membresía no se muestran sellos, así que tampoco ofrecemos
+  // ordenar por una columna que no se ve.
+  const opcionesOrden = (Object.keys(ETIQUETA_ORDEN) as Orden[]).filter(
+    (o) => mostrarSellos || o !== "sellos"
+  );
+  // La barra de filtros de Home manda sobre las dos tablas a la vez.
+  const {
+    activos,
+    coincide,
+    busqueda,
+    mesRegistro,
+    mesCumpleanos,
+    hayRegistros,
+    hayCumpleanos,
+  } = useFiltrosClientes();
+  const clientesOrdenados = ordenar(clientes.filter(coincide), orden);
+
+  // Al cambiar los filtros, la tabla vuelve a la primera página. Se ajusta
+  // durante el render (patrón de React) para no encadenar un efecto.
+  const firmaFiltros = `${busqueda}|${mesRegistro}|${mesCumpleanos}`;
+  const [firmaPrevia, setFirmaPrevia] = useState(firmaFiltros);
+  if (firmaFiltros !== firmaPrevia) {
+    setFirmaPrevia(firmaFiltros);
+    setPagina(1);
+  }
 
   // Paginación: 10 por página, se reinicia al cambiar el orden
   const totalPaginas = Math.max(1, Math.ceil(clientesOrdenados.length / POR_PAGINA));
@@ -156,7 +187,7 @@ export function ClientsTable({
           onChange={(e) => cambiarOrden(e.target.value as Orden)}
           className="h-9 w-[124px] shrink-0 cursor-pointer rounded-lg border border-ink/15 bg-white px-2 text-xs font-medium text-ink focus:border-primary focus:outline-none"
         >
-          {(Object.keys(ETIQUETA_ORDEN) as Orden[]).map((o) => (
+          {opcionesOrden.map((o) => (
             <option key={o} value={o}>
               {t(ETIQUETA_ORDEN[o])}
             </option>
@@ -164,7 +195,26 @@ export function ClientsTable({
         </select>
       </div>
       {clientesOrdenados.length === 0 ? (
-        <p className="p-6 pt-0 text-sm text-muted">{t("No hay clientes en esta categoría.")}</p>
+        <div className="p-6 pt-0 text-sm text-muted">
+          {activos ? (
+            <>
+              <p className="font-medium text-ink">
+                {mesCumpleanos !== "" && !hayCumpleanos
+                  ? t("Todavía no hay fechas de nacimiento cargadas.")
+                  : mesRegistro !== "" && !hayRegistros
+                    ? t("No hay fechas de registro para filtrar.")
+                    : t("Ningún cliente coincide con los filtros.")}
+              </p>
+              <p className="mt-1">
+                {mesCumpleanos !== "" && !hayCumpleanos
+                  ? t("Agregá la fecha desde el botón Editar de cada cliente.")
+                  : t("Probá con otro nombre, mes o limpiá los filtros.")}
+              </p>
+            </>
+          ) : (
+            <p>{t("No hay clientes en esta categoría.")}</p>
+          )}
+        </div>
       ) : (
         <>
           {/* ===== Tabla (desktop) ===== */}
@@ -186,14 +236,23 @@ export function ClientsTable({
                   <tr key={c.id} className="hover:bg-cream/40">
                     <td className="px-6 py-4"><Bandera pais={c.pais} /></td>
                     <td className="py-4">
-                      <p className="font-medium">{c.nombre}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="min-w-0 truncate font-medium">{c.nombre}</p>
+                        {mostrarBadgeMiembro && c.membresia && (
+                          <span className="shrink-0 rounded-full bg-gold/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink">
+                            {t("Miembro")}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted">{c.correo}</p>
                       {/* La barra de sellos va debajo del nombre, como en móvil:
                           una columna menos y la ficha se lee en un solo bloque.
                           En desktop tiene más ancho que en la columna angosta de antes. */}
-                      <div className="mt-2 w-36">
-                        <Sellos cliente={c} className="w-full" />
-                      </div>
+                      {mostrarSellos && (
+                        <div className="mt-2 w-36">
+                          <Sellos cliente={c} className="w-full" />
+                        </div>
+                      )}
                     </td>
                     <td className="py-4 text-muted">{c.telefonoFormato}</td>
                     {esAdmin && (
@@ -228,7 +287,14 @@ export function ClientsTable({
                 <div className="flex items-center gap-3">
                   <Bandera pais={c.pais} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{c.nombre}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="min-w-0 truncate font-medium">{c.nombre}</p>
+                      {mostrarBadgeMiembro && c.membresia && (
+                        <span className="shrink-0 rounded-full bg-gold/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink">
+                          {t("Miembro")}
+                        </span>
+                      )}
+                    </div>
                     <p className="truncate text-xs text-muted">{c.correo}</p>
                     <p className="truncate text-xs text-muted">{c.telefonoFormato}</p>
                   </div>
@@ -239,9 +305,11 @@ export function ClientsTable({
                   />
                 </div>
 
-                <div className="pl-11">
-                  <Sellos cliente={c} />
-                </div>
+                {mostrarSellos && (
+                  <div className="pl-11">
+                    <Sellos cliente={c} />
+                  </div>
+                )}
 
                 {esAdmin && (
                   <div className="flex flex-wrap items-center justify-between gap-3 pl-11">

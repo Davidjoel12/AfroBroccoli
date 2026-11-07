@@ -11,6 +11,7 @@ import { TarjetaCliente } from "@/components/card/tarjeta-cliente";
 import {
   guardarConfigTarjeta,
   leerConfigTarjeta,
+  normalizarSellos,
   rutaTarjeta,
   METAS,
   type ConfigTarjeta,
@@ -35,16 +36,19 @@ const selectClases =
 export default function CardCustomizer() {
   const t = useT();
   const [config, setConfig] = useState<ConfigTarjeta | null>(null);
+  const [metaInicial, setMetaInicial] = useState<number | null>(null);
   const [guardado, setGuardado] = useState(false);
-  const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
+  const [error, setError] = useState("");
   const { usuario } = useUsuario();
   const esAdmin = usuario?.role === "admin";
 
   // Cargar la configuración guardada en Supabase
   useEffect(() => {
     (async () => {
-      setConfig(await leerConfigTarjeta(supabase));
+      const cargada = await leerConfigTarjeta(supabase);
+      setConfig(cargada);
+      setMetaInicial(cargada.meta);
     })();
   }, []);
 
@@ -52,32 +56,46 @@ export default function CardCustomizer() {
     if (!config) return;
     setError("");
     setAviso("");
-    const r = await guardarConfigTarjeta(supabase, config);
-    if (!r.ok) {
+    const ok = await guardarConfigTarjeta(supabase, config);
+    if (!ok) {
       setGuardado(false);
       setError(t("No se pudieron guardar los cambios. Intentá de nuevo."));
       return;
     }
     setGuardado(true);
-    if (r.parcial) {
-      setAviso(
-        t(
-          "Se guardó, pero falta aplicar la migración en Supabase para poder separar la meta y la recompensa de los clientes miembros."
-        )
-      );
+
+    // Si cambió la meta, las tarjetas que ya la superaban quedarían en la
+    // meta hasta el próximo escaneo. Se regularizan en el momento: premio
+    // pendiente + contador en 0.
+    if (metaInicial !== null && config.meta !== metaInicial) {
+      const resultado = await normalizarSellos(supabase);
+      if (!resultado.ok) {
+        setGuardado(false);
+        setError(
+          t("La tarjeta se guardó, pero no se pudieron regularizar los sellos. Corré el SQL de normalización en Supabase.")
+        );
+      } else if (resultado.total > 0) {
+        setAviso(
+          `${resultado.total} ${t("tarjetas regularizadas: sellos en 0 y premios pendientes.")}`
+        );
+        setMetaInicial(config.meta);
+      } else {
+        setAviso(t("No había tarjetas en o por encima de la nueva meta."));
+        setMetaInicial(config.meta);
+      }
     }
   }
 
   // While loading, show a skeleton-ish preview rather than fake data
   const accent = config?.colorAcento ?? "#FF66C4";
   const meta = config?.meta ?? 5;
-  const metaMembresia = config?.metaMembresia ?? 5;
   const recompensa = config?.recompensa ?? "1 servicio gratis";
-  const recompensaMembresia = config?.recompensaMembresia ?? "1 servicio gratis";
 
   function actualizar(parcial: Partial<ConfigTarjeta>) {
     setConfig((prev) => (prev ? { ...prev, ...parcial } : prev));
     setGuardado(false);
+    setAviso("");
+    setError("");
   }
 
   return (
@@ -86,7 +104,7 @@ export default function CardCustomizer() {
       <Card>
         <h2 className="text-xl font-semibold">{t("Personalizar tarjeta")}</h2>
         <p className="mb-5 text-sm text-muted">
-          {t("Elegí el color de acento y la recompensa de tu programa. Cada tipo de cliente tiene su propia meta de sellos.")}
+          {t("Elegí el color de acento y la recompensa de tu programa. Todos los clientes, incluidos los miembros, usan la misma tarjeta de sellos.")}
         </p>
 
         {guardado && (
@@ -102,7 +120,7 @@ export default function CardCustomizer() {
         )}
 
         {aviso && (
-          <p className="mb-4 rounded-lg bg-pending/15 px-4 py-3 text-sm font-medium text-ink">
+          <p className="mb-4 rounded-lg bg-mint/40 px-4 py-3 text-sm font-medium text-ink">
             {aviso}
           </p>
         )}
@@ -135,13 +153,13 @@ export default function CardCustomizer() {
             </div>
           </div>
 
-          {/* --- Cliente regular --- */}
+          {/* --- Una sola tarjeta para todos --- */}
           <fieldset
             disabled={!esAdmin}
             className="flex flex-col gap-4 rounded-card bg-cream/60 p-4 disabled:opacity-90"
           >
             <legend className="px-1 text-sm font-semibold text-ink">
-              {t("Clientes regulares")}
+              {t("Tarjeta de sellos")}
             </legend>
 
             <Field label={t("Recompensas")}>
@@ -167,37 +185,9 @@ export default function CardCustomizer() {
             </Field>
           </fieldset>
 
-          {/* --- Cliente miembro --- */}
-          <fieldset
-            disabled={!esAdmin}
-            className="flex flex-col gap-4 rounded-card bg-cream/60 p-4 disabled:opacity-90"
-          >
-            <legend className="px-1 text-sm font-semibold text-ink">
-              {t("Clientes miembros")}
-            </legend>
-
-            <Field label={t("Recompensas")}>
-              <Input
-                value={recompensaMembresia}
-                onChange={(e) => actualizar({ recompensaMembresia: e.target.value })}
-                placeholder={t("Ej. 1 servicio gratis")}
-              />
-            </Field>
-
-            <Field label={t("Meta de sellos")}>
-              <select
-                className={selectClases}
-                value={String(metaMembresia)}
-                onChange={(e) => actualizar({ metaMembresia: Number(e.target.value) })}
-              >
-                {METAS.map((m) => (
-                  <option key={m} value={m}>
-                    {m} {t("sellos")}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </fieldset>
+          <p className="rounded-lg bg-mint/40 px-4 py-3 text-sm text-ink">
+            {t("La membresía es una suscripción mensual aparte. Los miembros usan esta misma tarjeta y siguen acumulando sellos.")}
+          </p>
 
           {esAdmin && (
             <Button onClick={guardar} disabled={!config} className="w-full sm:w-auto">

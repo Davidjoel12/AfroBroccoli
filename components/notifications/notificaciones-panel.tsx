@@ -30,6 +30,18 @@ const NOTIFICACIONES_DEMO: Notificacion[] = [
     fecha: new Date().toISOString(),
   },
   {
+    id: "demo-casi-premio",
+    tipo: "casi_premio",
+    clienteId: "demo-4",
+    clienteNombre: "Ana Torres",
+    clienteCodigo: "AB-1004",
+    telefono: "50760000004",
+    titulo: "Casi premio",
+    cuerpo: "Ana Torres llegó a 4/5. Le falta 1 sello para su premio.",
+    leida: false,
+    fecha: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+  },
+  {
     id: "demo-sellos",
     tipo: "premio_pendiente",
     clienteId: "demo-2",
@@ -57,6 +69,7 @@ const NOTIFICACIONES_DEMO: Notificacion[] = [
 
 function IconoNotificacion({ tipo, color }: { tipo: Notificacion["tipo"]; color: string }) {
   const iconos: Record<Notificacion["tipo"], string> = {
+    casi_premio: "★",
     cumpleanos: "A",
     premio_pendiente: "R",
     inactividad: "I",
@@ -114,6 +127,9 @@ export function NotificacionesPanel({
     onNotificacionClick?.(n);
     if (n.tipo === "inactividad" && n.telefono) {
       const mensaje = `Hola ${n.clienteNombre}, te extrañamos en AfroBroccoli. Hace tiempo que no nos visitas. ¿Te gustaría reagendar tu cita?`;
+      abrirWhatsApp(n.telefono, mensaje);
+    } else if (n.tipo === "casi_premio" && n.telefono) {
+      const mensaje = `Hola ${n.clienteNombre}, ya casi tenés tu premio en AfroBroccoli. Te falta 1 sello. Te esperamos.`;
       abrirWhatsApp(n.telefono, mensaje);
     } else if (n.tipo === "cumpleanos" && n.telefono) {
       const mensaje = `Feliz cumpleaños ${n.clienteNombre}. Te esperamos en AfroBroccoli para celebrarte.`;

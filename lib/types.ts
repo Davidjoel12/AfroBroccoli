@@ -6,11 +6,12 @@ export type Cliente = {
   pais: string | null; // código ISO para la bandera; null = sin nacionalidad cargada
   telefono: string; // internacional sin "+"
   telefonoFormato: string; // "+507 6000 0001"
-  sellos: number; // sellos acumulados
-  metaSellos: number; // sellos para la próxima recompensa (según si es miembro o no)
-  membresia: boolean;
-  visitas: number; // cantidad total de visitas
+  sellos: number; // sellos acumulados en la tarjeta regular
+  metaSellos: number; // meta de la tarjeta regular (la misma para todos)
+  membresia: boolean; // además de cliente regular, tiene membresía mensual
+  visitas: number; // cantidad total de visitas (regulares + de miembro)
   fechaNacimiento?: string | null; // "YYYY-MM-DD" para notificaciones de cumpleaños
+  creadoEl?: string | null; // ISO string de `created_at` (mes de registro)
   ultimaVisita?: string | null; // ISO string de la última visita (para notificación de inactividad)
 };
 

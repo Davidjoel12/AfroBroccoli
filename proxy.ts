@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-// Rutas públicas: login, registro por QR y la tarjeta del cliente (/c/AB-0042).
-const RUTAS_PUBLICAS = ["/login", "/registro", "/c/"];
+// Rutas públicas: login, registro por QR, la tarjeta del cliente (/c/AB-0042)
+// y los crons. Los crons se protegen solos con CRON_SECRET, no con la cookie
+// de sesión (Vercel Cron no manda cookies).
+const RUTAS_PUBLICAS = ["/login", "/registro", "/c/", "/api/cron/"];
 
 // Redirige a /login si no hay sesión activa; y de /login a / si ya hay sesión.
 export async function proxy(request: NextRequest) {
