@@ -16,14 +16,6 @@ import {
   METAS,
   type ConfigTarjeta,
 } from "@/lib/config";
-import { cn } from "@/lib/utils";
-
-const ACENTOS = [
-  { nombre: "Rosa", hex: "#FF66C4" },
-  { nombre: "Verde", hex: "#6FC22D" },
-  { nombre: "Dorado", hex: "#FFD700" },
-  { nombre: "Menta", hex: "#85D2CA" },
-];
 
 // Datos fijos de la vista previa. El código "AB-0000" no lo genera nunca el
 // formulario de registro (que saca entre AB-1000 y AB-9999), así que el QR
@@ -87,7 +79,6 @@ export default function CardCustomizer() {
   }
 
   // While loading, show a skeleton-ish preview rather than fake data
-  const accent = config?.colorAcento ?? "#FF66C4";
   const meta = config?.meta ?? 5;
   const recompensa = config?.recompensa ?? "1 servicio gratis";
 
@@ -104,7 +95,7 @@ export default function CardCustomizer() {
       <Card>
         <h2 className="text-xl font-semibold">{t("Personalizar tarjeta")}</h2>
         <p className="mb-5 text-sm text-muted">
-          {t("Elegí el color de acento y la recompensa de tu programa. Todos los clientes, incluidos los miembros, usan la misma tarjeta de sellos.")}
+          {t("Elegí la recompensa de tu programa. Todos los clientes, incluidos los miembros, usan la misma tarjeta de sellos.")}
         </p>
 
         {guardado && (
@@ -131,27 +122,6 @@ export default function CardCustomizer() {
               {t("Solo el administrador puede modificar la tarjeta. Estás viendo la configuración actual.")}
             </p>
           )}
-
-          <div>
-            <p className="mb-2 text-sm font-medium text-muted">{t("Color de acento")}</p>
-            <div className="flex gap-3">
-              {ACENTOS.map((a) => (
-                <button
-                  key={a.hex}
-                  type="button"
-                  aria-label={a.nombre}
-                  aria-pressed={accent === a.hex}
-                  disabled={!esAdmin}
-                  onClick={() => actualizar({ colorAcento: a.hex })}
-                  className={cn(
-                    "h-8 w-8 cursor-pointer rounded-full transition-transform hover:scale-110 disabled:cursor-not-allowed disabled:opacity-60",
-                    accent === a.hex && "scale-110 ring-2 ring-ink/40",
-                  )}
-                  style={{ backgroundColor: a.hex }}
-                />
-              ))}
-            </div>
-          </div>
 
           {/* --- Una sola tarjeta para todos --- */}
           <fieldset
@@ -212,7 +182,7 @@ export default function CardCustomizer() {
           sellos={EJEMPLO.sellos}
           meta={meta}
           recompensa={recompensa}
-          colorAcento={accent}
+          logoUrl={config?.logoUrl ?? "/logo.jpg"}
           url={rutaTarjeta(EJEMPLO.codigo)}
         />
 

@@ -121,6 +121,14 @@ export const DICCIONARIO_EN: Record<string, string> = {
 
   // ===== Acciones de admin =====
   "Editar cliente": "Edit client",
+  "Editar sellos": "Edit stamps",
+  "Editar sellos de": "Edit stamps of",
+  "Ajustá manualmente los sellos acumulados. El resto de los datos solo lo edita el administrador.":
+    "Manually adjust accumulated stamps. Only the admin can edit the rest of the details.",
+  "No se pudo generar el premio. Los sellos no se modificaron.":
+    "The reward couldn't be created. Stamps were not changed.",
+  "No se pudieron actualizar los sellos. Intentá de nuevo.":
+    "The stamps couldn't be updated. Try again.",
   "Los cambios se guardan al instante.": "Changes save instantly.",
   "Cliente con membresía": "Client with membership",
   "Se suma a la tarjeta regular: seguís acumulando sellos.":
@@ -220,8 +228,8 @@ export const DICCIONARIO_EN: Record<string, string> = {
     "Business details are managed by the salon admin. Ask the owner if you need something changed.",
   "Tu nombre": "Your name",
   "Tu correo": "Your email",
-  "Elegí el color de acento y la recompensa de tu programa. Todos los clientes, incluidos los miembros, usan la misma tarjeta de sellos.":
-    "Pick your accent color and reward. All clients, including members, use the same stamp card.",
+  "Elegí la recompensa de tu programa. Todos los clientes, incluidos los miembros, usan la misma tarjeta de sellos.":
+    "Choose your program reward. All clients, including members, use the same stamp card.",
   "✅ Tarjeta de cliente actualizada.": "✅ Client card updated.",
   "No se pudieron guardar los cambios. Intentá de nuevo.":
     "Couldn't save the changes. Try again.",
@@ -246,8 +254,14 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Miembro": "Member",
   "Tu código único": "Your unique code",
   "Por completar": "To complete",
-  "¡Recompensa lista! Passé por el salón a canjearla.":
+  "¡Recompensa lista! Pasá por el salón a canjearla.":
     "Your reward is ready! Stop by the salon to redeem it.",
+  "Ampliar QR para escanear": "Open QR to scan",
+  "Ampliar código QR para escanear": "Open QR code to scan",
+  "Código QR para escanear": "QR code to scan",
+  "Código QR de la tarjeta de": "QR code for the card of",
+  "Acerca el teléfono al lector del salón": "Hold your phone near the salon reader",
+  "Cerrar": "Close",
   "Tu tarjeta de cliente": "Your client card",
   "No encontramos esa tarjeta": "We couldn't find that card",
   "Revisá el link que te pasamos o pedile al salón que te lo reenvíe.":

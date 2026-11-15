@@ -84,12 +84,16 @@ export type ClienteEditable = Pick<
   | "fechaNacimiento"
 >;
 
-// Acciones de admin: editar datos del cliente y eliminarlo
+// Acciones del cliente: el admin edita todos los datos y puede eliminar.
+// El staff solo puede ajustar los sellos acumulados (sin borrar ni tocar el resto).
 export function AdminAcciones({
   cliente,
+  soloSellos = false,
   onChanged,
 }: {
   cliente: ClienteEditable;
+  /** Staff: el modal solo permite ajustar sellos acumulados. */
+  soloSellos?: boolean;
   /** Se dispara al guardar o al borrar, para que quien lo muestra actualice su lista. */
   onChanged?: (accion: "guardar" | "eliminar", clienteId: string) => void;
 }) {
@@ -126,23 +130,27 @@ export function AdminAcciones({
     setGuardando(true);
     setAviso("");
     const cantidad = Number(limitar(sellos));
-    const datos = { nombre, email: correo, telefono, pais };
 
-    const { error } = await supabase
-      .from("clientes")
-      .update({ ...datos, cumpleanos: fechaNacimiento || null })
-      .eq("id", cliente.id);
+    // Staff: solo se toca la tarjeta; los datos personales quedan intactos.
+    if (!soloSellos) {
+      const datos = { nombre, email: correo, telefono, pais };
 
-    if (error) {
-      setAviso(t("No se pudieron guardar los cambios. Intentá de nuevo."));
-      setGuardando(false);
-      return;
+      const { error } = await supabase
+        .from("clientes")
+        .update({ ...datos, cumpleanos: fechaNacimiento || null })
+        .eq("id", cliente.id);
+
+      if (error) {
+        setAviso(t("No se pudieron guardar los cambios. Intentá de nuevo."));
+        setGuardando(false);
+        return;
+      }
     }
 
     // Misma regla que el escáner: si el admin carga la meta, el ciclo se cierra.
     // Se genera un premio pendiente y el contador vuelve a 0. Si el campo no se
     // tocó, no se reescribe el contador (importante para los datos viejos).
-    if (sellosTocados) {
+    if (soloSellos || sellosTocados) {
       const completoMeta = meta > 0 && cantidad >= meta;
 
       if (completoMeta) {
@@ -170,7 +178,9 @@ export function AdminAcciones({
           if (errPremio) {
             console.error("[premio:admin]", errPremio.code, errPremio.message);
             setAviso(
-              t("Los datos se guardaron, pero no se pudo generar el premio. Los sellos no se modificaron.")
+              soloSellos
+                ? t("No se pudo generar el premio. Los sellos no se modificaron.")
+                : t("Los datos se guardaron, pero no se pudo generar el premio. Los sellos no se modificaron.")
             );
             setGuardando(false);
             return;
@@ -189,7 +199,9 @@ export function AdminAcciones({
       if (errSellos) {
         console.error("[sellos:admin]", errSellos.code, errSellos.message);
         setAviso(
-          t("Los datos se guardaron, pero no se pudieron actualizar los sellos. Intentá de nuevo.")
+          soloSellos
+            ? t("No se pudieron actualizar los sellos. Intentá de nuevo.")
+            : t("Los datos se guardaron, pero no se pudieron actualizar los sellos. Intentá de nuevo.")
         );
         setGuardando(false);
         return;
@@ -220,21 +232,24 @@ export function AdminAcciones({
             setAviso("");
             setEditando(true);
           }}
-          aria-label={`${t("Editar")} ${cliente.nombre}`}
-          title={t("Editar")}
+          aria-label={`${soloSellos ? t("Editar sellos de") : t("Editar")} ${cliente.nombre}`}
+          title={soloSellos ? t("Editar sellos") : t("Editar")}
           className="grid h-9 w-9 cursor-pointer place-items-center rounded-full border border-ink/15 text-ink transition-colors hover:border-primary/50 hover:bg-cream"
         >
           <IconoEditar />
         </button>
-        <button
-          type="button"
-          onClick={() => setConfirmando(true)}
-          aria-label={`${t("Eliminar")} ${cliente.nombre}`}
-          title={t("Eliminar")}
-          className="grid h-9 w-9 cursor-pointer place-items-center rounded-full border border-danger/30 text-danger transition-colors hover:bg-danger/10"
-        >
-          <IconoBorrar />
-        </button>
+        {/* El staff no puede eliminar clientes. */}
+        {!soloSellos && (
+          <button
+            type="button"
+            onClick={() => setConfirmando(true)}
+            aria-label={`${t("Eliminar")} ${cliente.nombre}`}
+            title={t("Eliminar")}
+            className="grid h-9 w-9 cursor-pointer place-items-center rounded-full border border-danger/30 text-danger transition-colors hover:bg-danger/10"
+          >
+            <IconoBorrar />
+          </button>
+        )}
       </div>
 
       {/* ===== Editar ===== */}
@@ -248,33 +263,52 @@ export function AdminAcciones({
             <div
               role="dialog"
               aria-modal="true"
-              aria-label={`${t("Editar")} ${cliente.nombre}`}
+              aria-label={`${soloSellos ? t("Editar sellos de") : t("Editar")} ${cliente.nombre}`}
               className="w-full max-w-md rounded-card bg-white p-5 shadow-xl sm:p-6"
               onClick={(e) => e.stopPropagation()}
             >
-            <h3 className="text-lg font-semibold">{t("Editar cliente")}</h3>
-            <p className="mt-1 text-sm text-muted">{t("Los cambios se guardan al instante.")}</p>
+            <h3 className="text-lg font-semibold">
+              {soloSellos ? t("Editar sellos") : t("Editar cliente")}
+            </h3>
+            <p className="mt-1 text-sm text-muted">
+              {soloSellos
+                ? t("Ajustá manualmente los sellos acumulados. El resto de los datos solo lo edita el administrador.")
+                : t("Los cambios se guardan al instante.")}
+            </p>
 
-            <div className="mt-4 flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 px-3.5 py-2.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                <IconoTorta className="h-4 w-4" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-                  {t("Cumpleaños")}
-                </p>
-                <p
-                  aria-live="polite"
-                  className={`truncate text-sm font-medium ${
-                    cumpleanosFormateado ? "text-ink" : "text-muted"
-                  }`}
-                >
-                  {cumpleanosFormateado ?? t("Sin fecha cargada")}
-                </p>
+            {!soloSellos && (
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 px-3.5 py-2.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                  <IconoTorta className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
+                    {t("Cumpleaños")}
+                  </p>
+                  <p
+                    aria-live="polite"
+                    className={`truncate text-sm font-medium ${
+                      cumpleanosFormateado ? "text-ink" : "text-muted"
+                    }`}
+                  >
+                    {cumpleanosFormateado ?? t("Sin fecha cargada")}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
+
+            {soloSellos && (
+              <p className="mt-4 rounded-xl border border-ink/10 bg-cream/60 px-3.5 py-2.5 text-sm">
+                <span className="font-semibold text-ink">{cliente.nombre}</span>
+                {cliente.codigo ? (
+                  <span className="text-muted"> · {cliente.codigo}</span>
+                ) : null}
+              </p>
+            )}
 
             <div className="mt-5 flex flex-col gap-4">
+              {!soloSellos && (
+                <>
               <Field label={t("Nombre completo")} htmlFor={`nombre-${cliente.id}`}>
                 <Input id={`nombre-${cliente.id}`} value={nombre} onChange={(e) => setNombre(e.target.value)} />
               </Field>
@@ -304,6 +338,8 @@ export function AdminAcciones({
                   {t("Opcional. Se usa para el filtro y las notificaciones de cumpleaños.")}
                 </span>
               </Field>
+                </>
+              )}
               <Field label={t("Sellos acumulados")} htmlFor={`sellos-${cliente.id}`}>
                 <Input
                   id={`sellos-${cliente.id}`}
