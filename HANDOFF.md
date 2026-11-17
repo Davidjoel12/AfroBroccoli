@@ -1,6 +1,34 @@
-# HANDOFF — AfroBroccoli (sesión 2026-10-06 → 2026-11-06)
+# HANDOFF — AfroBroccoli (sesión 2026-10-06 → 2026-11-17)
 
 > Prompt de continuidad para otra IA. Leer completo antes de trabajar. Idioma de la UI y de la conversación: **español** (voseo en el copy: "Elegí", "Verificá", "Apuntá").
+
+## 0a. Sesión 2026-11-17 — Fase 1 Miembros
+
+### Qué quedó implementado
+- Tercera opción **Miembros** en Configuración, visible y accesible **solo para admin**. Ruta: `/configuracion/miembros`.
+- Tabla nueva `membresias_periodos` para conservar el historial de cuotas. La membresía sigue siendo un plus: una sola tarjeta regular de sellos para todos.
+- Reglas: cuota por defecto **$10**, vence el **28**, **5 días de gracia**, primer mes de una membresía nueva **gratis/exento**, los miembros que ya existían al lanzar arrancan con el **mes actual pendiente**. No se cobran meses futuros.
+- Una cuota impaga pasa a **Revisar** un mes después de su vencimiento. El admin puede marcar pagos, deshacer pagos, ver historial, editar el monto por defecto y enviar recordatorios.
+- El escáner usa `membresia_estado(uuid)`: si la membresía está vencida, registra la visita como **cliente regular** y avisa en pantalla. Siempre suma sellos a la tarjeta regular.
+- Recordatorios por correo en `/api/miembros/recordatorio` (solo admin, máximo 50 IDs por request; la UI los manda en lotes). Usa el proveedor configurado en `lib/email.ts` (Gmail → Brevo → Resend).
+- Plantilla `construirCorreoRecordatorioMembresia` en `lib/premios.ts`.
+- `clientes.membresia_desde` y `clientes.membresia_primer_mes_gratis` se actualizan al registrar o al alternar la membresía.
+
+### SQL obligatorio antes de probar
+Ejecutar completo `supabase/fase-1-miembros.sql` en Supabase → SQL Editor. Es idempotente e incluye los requisitos de la fase anterior:
+- `visitas.membresia`
+- `clientes.cumpleanos_correo_anio`
+- `tarjeta_cliente(text)` actualizada con `membresia`
+- `normalizar_sellos()`
+- columnas de configuración de membresía, `membresias_periodos`, RLS admin-only, `preparar_membresias_mes()`, `membresia_estado(uuid)` y `marcar_membresias_revisar()`
+
+Si falta el SQL, la página Miembros muestra un aviso y el escáner cae al comportamiento anterior.
+
+### Verificación pendiente
+- Correr el SQL en Supabase y probar con sesiones reales de admin y staff (el staff no debe ver Miembros ni leer/escribir cuotas).
+- Configurar Gmail (`GMAIL_USER`, `GMAIL_APP_PASSWORD`) o el proveedor de correo que corresponda y probar un recordatorio real.
+- Probar pago, deshacer pago, historial, recordatorio individual, recordatorio masivo y escaneo con membresía vencida.
+- La inspección visual con Playwright quedó **pendiente** por pedido explícito; el build, TypeScript y ESLint ya pasan.
 
 ## 0. Sesión 2026-11-06 — cumpleaños automático + aviso a los 4 sellos
 

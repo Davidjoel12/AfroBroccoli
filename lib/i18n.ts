@@ -116,6 +116,8 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Quitar membresía": "Remove membership",
   "Hacer miembro (sigue acumulando sellos)": "Make member (they keep earning stamps)",
   "Quitar membresía (sigue como cliente regular)": "Remove membership (they remain a regular client)",
+  "No se pudo actualizar la membresía. Revisá que el SQL de Miembros esté corrido.":
+    "The membership couldn't be updated. Check that the Members SQL has been run.",
   "Guardando…": "Saving…",
   "Enviar tarjeta de": "Send card of",
 
@@ -311,6 +313,135 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Queda pendiente en la campana hasta que lo entregues.":
     "It stays pending in the bell until you deliver it.",
   "Casi premio": "Almost there",
+
+  // ===== Miembros (Fase 1) =====
+  "Miembros": "Members",
+  "Membresía mensual": "Monthly membership",
+  "Cuota de": "Fee of",
+  "de cada mes": "of every month",
+  "días de gracia": "grace days",
+  "El primer mes de una membresía nueva es de regalo.":
+    "The first month of a new membership is free.",
+  "Cuota por defecto": "Default fee",
+  "Monto por defecto": "Default amount",
+  "Guardar monto": "Save amount",
+  "Se aplica a las cuotas nuevas. Las cuotas ya creadas conservan su monto.":
+    "Applies to new dues. Dues already created keep their amount.",
+  "Falta correr el SQL de Miembros en Supabase.":
+    "The Members SQL hasn't been run in Supabase yet.",
+  "Ejecutá el archivo supabase/fase-1-miembros.sql en el SQL Editor. Mientras tanto, la página puede quedar en modo lectura.":
+    "Run supabase/fase-1-miembros.sql in the SQL Editor. Until then, this page may stay read-only.",
+  "Detalle técnico": "Technical details",
+  "Al día": "Up to date",
+  "Pendientes": "Pending",
+  "Vencidos": "Overdue",
+  "Revisar": "Review",
+  "Por vencer": "Due soon",
+  "Vencido": "Overdue",
+  "Sin período": "No period",
+  "Regalo": "Free",
+  "Pagado": "Paid",
+  "Pendiente": "Pending",
+  "Por cobrar": "Outstanding",
+  "Cobrado este mes": "Collected this month",
+  "al día": "up to date",
+  "cuota pendiente": "pending due",
+  "cuotas pendientes": "pending dues",
+  "Buscar por nombre, código o correo": "Search by name, code or email",
+  "Nombre, código o correo": "Name, code or email",
+  "pago registrado": "payment recorded",
+  "pagos registrados": "payments recorded",
+  "Recordar a pendientes": "Remind pending members",
+  "Todavía no hay miembros.": "There are no members yet.",
+  "Ningún miembro coincide con los filtros.":
+    "No members match the filters.",
+  "Marcá a una clienta como miembro desde Home para empezar.":
+    "Mark a client as a member from Home to get started.",
+  "Probá con otro nombre o limpiá los filtros.":
+    "Try another name or clear the filters.",
+  "Estado": "Status",
+  "Cuota": "Fee",
+  "Último pago": "Last payment",
+  "Sin correo cargado": "No email on file",
+  "cuotas": "dues",
+  "Registrar pago": "Record payment",
+  "Marcar al día": "Mark as paid",
+  "Enviar recordatorio": "Send reminder",
+  "Ver historial": "View history",
+  "Detalle": "Details",
+  "Recordar": "Remind",
+  "Elegí una cuota.": "Choose a due.",
+  "El monto debe ser mayor o igual a 0.":
+    "The amount must be greater than or equal to 0.",
+  "No se pudo guardar el pago. Intentá de nuevo.":
+    "The payment couldn't be saved. Try again.",
+  "Guardar pago": "Save payment",
+  "No hay cuotas pendientes.": "There are no pending dues.",
+  "Esta clienta ya está al día.": "This client is already up to date.",
+  "¿Qué cuota pagó?": "Which due was paid?",
+  "Primer mes de regalo": "First month free",
+  "Mes de regalo, no se cobra.": "Free month, no charge.",
+  "Vence el": "Due on",
+  "vence el": "due on",
+  "Sin vencimiento": "No due date",
+  "Monto": "Amount",
+  "Nota (opcional)": "Note (optional)",
+  "Ej. pagó en efectivo, transferencia, etc.":
+    "E.g. paid in cash, transfer, etc.",
+  "Se registra solo la cuota elegida. Si hay meses anteriores pendientes, podés marcarlos uno por uno.":
+    "Only the selected due is recorded. If previous months are pending, you can mark them one by one.",
+  "No se pudo actualizar la marca de revisar.":
+    "The review flag couldn't be updated.",
+  "Se quitó la marca de revisar.": "Review flag cleared.",
+  "Se marcó para revisar.": "Marked for review.",
+  "Deshacer pago": "Undo payment",
+  "¿Deshacer este pago? La cuota vuelve a pendiente.":
+    "Undo this payment? The due will go back to pending.",
+  "No se pudo deshacer el pago.": "The payment couldn't be undone.",
+  "Pago deshecho. La cuota volvió a pendiente.":
+    "Payment undone. The due is pending again.",
+  "¿Quitar la membresía? La clienta sigue como cliente regular y conserva sus sellos.":
+    "Remove the membership? The client stays a regular client and keeps their stamps.",
+  "No se pudo quitar la membresía.": "The membership couldn't be removed.",
+  "Membresía quitada. Sigue como cliente regular.":
+    "Membership removed. They remain a regular client.",
+  "Miembro desde": "Member since",
+  "Cuota actual": "Current fee",
+  "Total pagado:": "Total paid:",
+  "Historial de cuotas": "Due history",
+  "Todavía no hay cuotas generadas.": "No dues have been generated yet.",
+  "Nota:": "Note:",
+  "Pagado el": "Paid on",
+  "Quitar revisar": "Clear review",
+  "Marcar para revisar": "Mark for review",
+  "La clienta sigue acumulando sellos en su tarjeta regular.":
+    "The client keeps earning stamps on their regular card.",
+  "Enviar recordatorios": "Send reminders",
+  "Enviando…": "Sending…",
+  "Se enviará un correo a": "An email will be sent to",
+  "clienta": "client",
+  "clientas": "clients",
+  "con cuotas pendientes y correo cargado.":
+    "with pending dues and an email on file.",
+  "Se manda un solo recordatorio por clienta, por la cuota más vieja pendiente.":
+    "One reminder is sent per client, for the oldest pending due.",
+  "La clienta no tiene un correo válido.":
+    "The client doesn't have a valid email.",
+  "No se pudo enviar el recordatorio.": "The reminder couldn't be sent.",
+  "Recordatorio enviado a": "Reminder sent to",
+  "Se enviaron": "Sent",
+  "recordatorio": "reminder",
+  "recordatorios": "reminders",
+  "omitidos": "skipped",
+  "con error": "with errors",
+  "No se pudieron enviar los recordatorios.":
+    "The reminders couldn't be sent.",
+  "Pago registrado.": "Payment recorded.",
+  "No se pudo guardar el monto. Intentá de nuevo.":
+    "The amount couldn't be saved. Try again.",
+  "Monto guardado.": "Amount saved.",
+  "Membresía vencida: se registró como cliente regular.":
+    "Membership overdue: recorded as a regular client.",
 };
 
 export type Idioma = "es" | "en";
