@@ -14,15 +14,14 @@
 - Plantilla `construirCorreoRecordatorioMembresia` en `lib/premios.ts`.
 - `clientes.membresia_desde` y `clientes.membresia_primer_mes_gratis` se actualizan al registrar o al alternar la membresía.
 
-### SQL obligatorio antes de probar
-Ejecutar completo `supabase/fase-1-miembros.sql` en Supabase → SQL Editor. Es idempotente e incluye los requisitos de la fase anterior:
-- `visitas.membresia`
-- `clientes.cumpleanos_correo_anio`
-- `tarjeta_cliente(text)` actualizada con `membresia`
-- `normalizar_sellos()`
-- columnas de configuración de membresía, `membresias_periodos`, RLS admin-only, `preparar_membresias_mes()`, `membresia_estado(uuid)` y `marcar_membresias_revisar()`
+### SQL de Miembros
+Se ejecuta a mano en Supabase → SQL Editor; **no se guarda como archivo en el repo**. Solo incluye lo nuevo de membresía:
+- columnas de configuración de membresía
+- `clientes.membresia_desde` y `clientes.membresia_primer_mes_gratis`
+- `membresias_periodos`, su índice único y RLS admin-only
+- `preparar_membresias_mes()`, `membresia_estado(uuid)` y `marcar_membresias_revisar()`
 
-Si falta el SQL, la página Miembros muestra un aviso y el escáner cae al comportamiento anterior.
+Los objetos de fases anteriores (`visitas.membresia`, `cumpleanos_correo_anio`, `tarjeta_cliente` y `normalizar_sellos`) ya existen y no se tocan. Si falta el SQL de Miembros, la página muestra un aviso y el escáner cae al comportamiento anterior.
 
 ### Verificación pendiente
 - Correr el SQL en Supabase y probar con sesiones reales de admin y staff (el staff no debe ver Miembros ni leer/escribir cuotas).
