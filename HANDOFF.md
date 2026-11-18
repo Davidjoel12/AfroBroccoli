@@ -7,25 +7,28 @@
 ### Qué quedó implementado
 - Tercera opción **Miembros** en Configuración, visible y accesible **solo para admin**. Ruta: `/configuracion/miembros`.
 - Tabla nueva `membresias_periodos` para conservar el historial de cuotas. La membresía sigue siendo un plus: una sola tarjeta regular de sellos para todos.
-- Reglas: cuota por defecto **$10**, vence el **28**, **5 días de gracia**, primer mes de una membresía nueva **gratis/exento**, los miembros que ya existían al lanzar arrancan con el **mes actual pendiente**. No se cobran meses futuros.
+- Reglas: cuota por defecto **$65**, vence el **28**, **5 días de gracia** y **se paga desde el primer mes de inscripción**. Los miembros que ya existían al lanzar arrancan con el **mes actual pendiente**. No se cobran meses futuros.
 - Una cuota impaga pasa a **Revisar** un mes después de su vencimiento. El admin puede marcar pagos, deshacer pagos, ver historial, editar el monto por defecto y enviar recordatorios.
 - El escáner usa `membresia_estado(uuid)`: si la membresía está vencida, registra la visita como **cliente regular** y avisa en pantalla. Siempre suma sellos a la tarjeta regular.
 - Recordatorios por correo en `/api/miembros/recordatorio` (solo admin, máximo 50 IDs por request; la UI los manda en lotes). Usa el proveedor configurado en `lib/email.ts` (Gmail → Brevo → Resend).
 - Plantilla `construirCorreoRecordatorioMembresia` en `lib/premios.ts`.
-- `clientes.membresia_desde` y `clientes.membresia_primer_mes_gratis` se actualizan al registrar o al alternar la membresía.
+- `clientes.membresia_desde` se actualiza al registrar o al alternar la membresía. La columna vieja `membresia_primer_mes_gratis` queda sin uso.
 
 ### SQL de Miembros
 Se ejecuta a mano en Supabase → SQL Editor; **no se guarda como archivo en el repo**. Solo incluye lo nuevo de membresía:
 - columnas de configuración de membresía
-- `clientes.membresia_desde` y `clientes.membresia_primer_mes_gratis`
+- `clientes.membresia_desde`
 - `membresias_periodos`, su índice único y RLS admin-only
 - `preparar_membresias_mes()`, `membresia_estado(uuid)` y `marcar_membresias_revisar()`
+
+La función `preparar_membresias_mes()` crea la primera cuota como **pendiente** (sin mes gratis). La columna `clientes.membresia_primer_mes_gratis` puede quedar en la base, pero ya no se lee ni se escribe.
 
 Los objetos de fases anteriores (`visitas.membresia`, `cumpleanos_correo_anio`, `tarjeta_cliente` y `normalizar_sellos`) ya existen y no se tocan. Si falta el SQL de Miembros, la página muestra un aviso y el escáner cae al comportamiento anterior.
 
 ### Verificación pendiente
 - Correr el SQL en Supabase y probar con sesiones reales de admin y staff (el staff no debe ver Miembros ni leer/escribir cuotas).
 - Configurar Gmail (`GMAIL_USER`, `GMAIL_APP_PASSWORD`) o el proveedor de correo que corresponda y probar un recordatorio real.
+- Para probar recordatorios, crear el cliente de prueba `AB-0000` con correo y teléfono reales, y una cuota del mes pendiente.
 - Probar pago, deshacer pago, historial, recordatorio individual, recordatorio masivo y escaneo con membresía vencida.
 - La inspección visual con Playwright quedó **pendiente** por pedido explícito; el build, TypeScript y ESLint ya pasan.
 

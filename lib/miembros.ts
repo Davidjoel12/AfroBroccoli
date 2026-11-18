@@ -8,7 +8,7 @@ import { claveDia, MESES } from "./fechas";
 // Miembros y el escáner.
 // ============================================================================
 
-export const MONTO_MEMBRESIA_POR_DEFECTO = 10;
+export const MONTO_MEMBRESIA_POR_DEFECTO = 65;
 export const DIA_COBRO_POR_DEFECTO = 28;
 export const DIAS_GRACIA_POR_DEFECTO = 5;
 
@@ -44,7 +44,6 @@ export type MiembroMembresia = {
   telefono: string;
   telefonoFormato: string;
   membresiaDesde: string | null;
-  primerMesGratis: boolean;
   periodos: PeriodoMembresia[];
   periodoActual: PeriodoMembresia | null;
   periodoPendiente: PeriodoMembresia | null;
@@ -172,7 +171,6 @@ export function calcularResumenMembresia(
   | "telefono"
   | "telefonoFormato"
   | "membresiaDesde"
-  | "primerMesGratis"
   | "periodos"
 > {
   const mes = mesActualClave(hoy);
@@ -221,8 +219,8 @@ export function calcularResumenMembresia(
 }
 
 /**
- * Cuotas que el admin todavía puede cobrar. El primer mes de regalo no se
- * cobra: queda exento y no aparece en el modal de pago.
+ * Cuotas que el admin todavía puede cobrar. Las cuotas exentas no se cobran y
+ * no aparecen en el modal de pago.
  */
 export function cuotasCobrables(
   periodos: PeriodoMembresia[],

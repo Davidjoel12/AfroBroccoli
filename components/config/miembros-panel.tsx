@@ -201,7 +201,7 @@ function EstadoCuotaBadge({
       clase: "border-primary/30 bg-primary/15 text-ink",
     },
     exento: {
-      label: "Regalo",
+      label: "Exento",
       clase: "border-mint/50 bg-mint/20 text-ink",
     },
     pendiente: {
@@ -464,7 +464,7 @@ function PagoModal({
                       </span>
                       <span className="mt-0.5 block text-xs text-muted">
                         {item.estado === "exento"
-                          ? t("Primer mes de regalo")
+                          ? t("Cuota exenta")
                           : item.venceEl
                             ? `${t("Vence el")} ${fechaCorta(item.venceEl)}`
                             : t("Sin vencimiento")}
@@ -473,7 +473,7 @@ function PagoModal({
                     <span className="shrink-0 text-right">
                       <span className="block text-sm font-semibold text-ink">
                         {item.estado === "exento"
-                          ? t("Regalo")
+                          ? t("Exento")
                           : formatearMonto(item.monto)}
                       </span>
                       <span className="mt-0.5 block">
@@ -621,7 +621,6 @@ function DetalleModal({
       .update({
         membresia: false,
         membresia_desde: null,
-        membresia_primer_mes_gratis: false,
       })
       .eq("id", miembro.id);
 
@@ -670,7 +669,7 @@ function DetalleModal({
               <dd className="font-semibold text-ink">
                 {cuotaVisible
                   ? cuotaVisible.estado === "exento"
-                    ? t("Primer mes de regalo")
+                    ? t("Cuota exenta")
                     : formatearMonto(cuotaVisible.monto)
                   : "—"}
               </dd>
@@ -704,7 +703,7 @@ function DetalleModal({
                 const partes = partesMes(periodo.periodo);
                 const estado = estadoCuotaDe(periodo, hoy, config.diasGracia);
                 const pagado = estado === "pagado";
-                const regalo = estado === "exento";
+                const exento = estado === "exento";
 
                 return (
                   <li key={periodo.id} className="flex flex-col gap-2 py-3">
@@ -714,8 +713,8 @@ function DetalleModal({
                           {t(partes.mes)} {partes.anio}
                         </p>
                         <p className="mt-0.5 text-xs text-muted">
-                          {regalo
-                            ? t("Primer mes de regalo")
+                          {exento
+                            ? t("Cuota exenta")
                             : `${formatearMonto(periodo.monto)} · ${
                                 periodo.venceEl
                                   ? `${t("Vence el")} ${fechaCorta(periodo.venceEl)}`
@@ -746,7 +745,7 @@ function DetalleModal({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      {!pagado && !regalo && (
+                      {!pagado && !exento && (
                         <button
                           type="button"
                           onClick={() => onPago(periodo.id)}
@@ -755,9 +754,9 @@ function DetalleModal({
                           {t("Registrar pago")}
                         </button>
                       )}
-                      {regalo && (
+                      {exento && (
                         <span className="text-xs font-medium text-muted">
-                          {t("Mes de regalo, no se cobra.")}
+                          {t("Cuota exenta, no se cobra.")}
                         </span>
                       )}
                       {pagado && (
@@ -770,7 +769,7 @@ function DetalleModal({
                           {t("Deshacer pago")}
                         </button>
                       )}
-                      {((!pagado && !regalo) || periodo.revisar) && (
+                      {((!pagado && !exento) || periodo.revisar) && (
                         <button
                           type="button"
                           disabled={trabajando}
@@ -1136,7 +1135,7 @@ export default function MiembrosPanel({
     const cuota = miembro.periodoPendiente ?? miembro.periodoActual;
     if (!cuota) return "—";
     return cuota.estado === "exento"
-      ? t("Regalo")
+      ? t("Exento")
       : formatearMonto(cuota.monto);
   }
 
@@ -1172,7 +1171,7 @@ export default function MiembrosPanel({
                 {t("Cuota de")} {formatearMonto(config.monto)} ·{" "}
                 {t("vence el")} {config.diaCobro} {t("de cada mes")} ·{" "}
                 {config.diasGracia} {t("días de gracia")}.{" "}
-                {t("El primer mes de una membresía nueva es de regalo.")}
+                {t("La cuota se paga desde el primer mes de inscripción.")}
               </p>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3">

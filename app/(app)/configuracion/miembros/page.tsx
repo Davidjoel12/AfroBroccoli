@@ -18,7 +18,6 @@ type ClienteFila = {
   telefono: string | null;
   membresia: boolean;
   membresia_desde: string | null;
-  membresia_primer_mes_gratis: boolean | null;
 };
 
 type PeriodoFila = {
@@ -83,7 +82,7 @@ export default async function MiembrosPage() {
   const config = normalizarConfigMembresia(configData);
 
   const columnasCompletas =
-    "id, codigo, nombre, email, telefono, membresia, membresia_desde, membresia_primer_mes_gratis";
+    "id, codigo, nombre, email, telefono, membresia, membresia_desde";
   const columnasBase =
     "id, codigo, nombre, email, telefono, membresia, created_at";
 
@@ -107,11 +106,10 @@ export default async function MiembrosPage() {
       .eq("membresia", true)
       .order("nombre");
 
-    filasClientes = ((baseData ?? []) as Array<Omit<ClienteFila, "membresia_desde" | "membresia_primer_mes_gratis">>).map(
+    filasClientes = ((baseData ?? []) as Array<Omit<ClienteFila, "membresia_desde">>).map(
       (cliente) => ({
         ...cliente,
         membresia_desde: null,
-        membresia_primer_mes_gratis: false,
       })
     );
   }
@@ -178,7 +176,6 @@ export default async function MiembrosPage() {
       telefono: (cliente.telefono ?? "").replace(/[^\d]/g, ""),
       telefonoFormato: cliente.telefono ?? "",
       membresiaDesde: cliente.membresia_desde,
-      primerMesGratis: Boolean(cliente.membresia_primer_mes_gratis),
       periodos,
       ...resumen,
     };

@@ -117,7 +117,6 @@ export function RegisterForm({
       pais: iso,
       membresia,
       membresia_desde: membresia ? claveDia() : null,
-      membresia_primer_mes_gratis: membresia,
       ...(fecha.iso ? { cumpleanos: fecha.iso } : {}),
     };
 

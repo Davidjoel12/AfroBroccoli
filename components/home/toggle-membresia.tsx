@@ -28,7 +28,6 @@ export function ToggleMembresia({
       .update({
         membresia: nuevaMembresia,
         membresia_desde: nuevaMembresia ? claveDia() : null,
-        membresia_primer_mes_gratis: nuevaMembresia,
       })
       .eq("id", clienteId);
 
