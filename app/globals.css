@@ -19,6 +19,17 @@
   --color-pending: #ffae6b; 
   --color-danger: #e23650;  
 
+  /* Tarjeta pública del cliente */
+  --color-card-cream: #fdf6ec;
+  --color-card-dark: #211a19;
+  --color-card-accent: #7dd3c0;
+  --color-card-text: #ffffff;
+  --color-card-muted: #a89f9c;
+  --color-card-empty: #4a4140;
+  --color-card-support: #6b625f;
+  --color-card-qr: #ffffff;
+  --color-card-qr-ink: #111111;
+
   /* Formas */
   --radius-card: 20px;
   --radius-button: 10px;
@@ -27,6 +38,8 @@
   --animate-drawer-down: drawer-down 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-fade-in: fade-in 0.2s ease-out;
   --animate-shimmer: shimmer 2s infinite;
+  --animate-qr-overlay: qr-overlay 0.2s ease-out;
+  --animate-qr-pop: qr-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
   @keyframes shimmer {
     100% {
@@ -54,6 +67,33 @@
     }
   }
 
+  @keyframes qr-overlay {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes qr-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-qr-overlay,
+  .animate-qr-pop {
+    animation: none;
+  }
 }
 
 /* == Fuentes (variables que inyecta next/font) == */

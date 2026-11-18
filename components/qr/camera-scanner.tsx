@@ -189,11 +189,35 @@ export function CameraScanner() {
       return;
     }
 
-    // La visita guarda si ese día la clienta estaba en membresía. El sello,
-    // en cambio, siempre va a su tarjeta regular.
+    // La visita guarda si ese día la clienta estaba en membresía Y al día con
+    // la cuota. Si la membresía está vencida, la visita se registra como
+    // cliente regular. Si la función todavía no existe (SQL pendiente),
+    // mantenemos el comportamiento anterior para no romper el escaneo.
+    const { data: estadoData, error: errEstado } = await supabase.rpc(
+      "membresia_estado",
+      { p_cliente_id: cliente.id }
+    );
+    if (errEstado) {
+      console.error("[escaneo:membresia_estado]", errEstado.code, errEstado.message);
+    }
+    const estadoMembresia = Array.isArray(estadoData)
+      ? estadoData[0]
+      : estadoData;
+    const alDia = errEstado
+      ? Boolean(cliente.membresia)
+      : Boolean(
+          (estadoMembresia as { al_dia?: boolean } | null)?.al_dia
+        );
+    const esMiembroActivo = Boolean(cliente.membresia) && alDia;
+    const membresiaVencida = Boolean(cliente.membresia) && !alDia;
+    const notaMembresia = membresiaVencida
+      ? " Membresía vencida: se registró como cliente regular."
+      : "";
+
+    // El sello, en cambio, siempre va a su tarjeta regular.
     const { error: errVisita } = await supabase
       .from("visitas")
-      .insert({ cliente_id: cliente.id, membresia: Boolean(cliente.membresia) });
+      .insert({ cliente_id: cliente.id, membresia: esMiembroActivo });
     if (errVisita) {
       console.error("[visita]", errVisita.code, errVisita.message);
       setMensaje({
@@ -257,8 +281,8 @@ export function CameraScanner() {
       setMensaje({
         tipo: errPremio ? "error" : "ok",
         texto: errPremio
-          ? `${cliente.nombre} completó sus ${meta} sellos de la tarjeta regular, pero el premio no se pudo registrar en el panel: ${errPremio.message}`
-          : `${cliente.nombre} completó sus ${meta} sellos de la tarjeta regular y el contador volvió a 0/${meta}. Premio: ${recompensa}. Queda pendiente en la campana.`,
+          ? `${cliente.nombre} completó sus ${meta} sellos de la tarjeta regular, pero el premio no se pudo registrar en el panel: ${errPremio.message}.${notaMembresia}`
+          : `${cliente.nombre} completó sus ${meta} sellos de la tarjeta regular y el contador volvió a 0/${meta}. Premio: ${recompensa}. Queda pendiente en la campana.${notaMembresia}`,
       });
 
       setPremio({
@@ -290,9 +314,11 @@ export function CameraScanner() {
 
       setMensaje({
         tipo: "ok",
-        texto: correo
-          ? `${cliente.nombre} llegó a ${nuevaCantidad}/${meta}. Se está enviando el aviso: el próximo sello es el premio.`
-          : `${cliente.nombre} llegó a ${nuevaCantidad}/${meta}. No tiene correo cargado; avisale por WhatsApp.`,
+        texto:
+          (correo
+            ? `${cliente.nombre} llegó a ${nuevaCantidad}/${meta}. Se está enviando el aviso: el próximo sello es el premio.`
+            : `${cliente.nombre} llegó a ${nuevaCantidad}/${meta}. No tiene correo cargado; avisale por WhatsApp.`) +
+          notaMembresia,
       });
 
       if (correo) {
@@ -305,9 +331,11 @@ export function CameraScanner() {
 
     setMensaje({
       tipo: "ok",
-      texto: cliente.membresia
-        ? `Visita registrada como miembro para ${cliente.nombre}. Sellos de su tarjeta regular: ${nuevaCantidad}/${meta}. Recompensa: ${recompensa}.`
-        : `Visita registrada para ${cliente.nombre}. Sellos: ${nuevaCantidad}/${meta}. Recompensa: ${recompensa}.`,
+      texto:
+        (esMiembroActivo
+          ? `Visita registrada como miembro para ${cliente.nombre}. Sellos de su tarjeta regular: ${nuevaCantidad}/${meta}. Recompensa: ${recompensa}.`
+          : `Visita registrada para ${cliente.nombre}. Sellos: ${nuevaCantidad}/${meta}. Recompensa: ${recompensa}.`) +
+        notaMembresia,
     });
   }
 

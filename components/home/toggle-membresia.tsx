@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useT } from "@/components/i18n/language-provider";
+import { claveDia } from "@/lib/fechas";
 
 // Botón para alternar la membresía de un cliente (solo lo ve el admin)
 export function ToggleMembresia({
@@ -21,10 +22,24 @@ export function ToggleMembresia({
 
   async function alternar() {
     setCargando(true);
-    await supabase
+    const nuevaMembresia = !membresia;
+    const { error } = await supabase
       .from("clientes")
-      .update({ membresia: !membresia })
+      .update({
+        membresia: nuevaMembresia,
+        membresia_desde: nuevaMembresia ? claveDia() : null,
+      })
       .eq("id", clienteId);
+
+    if (error) {
+      console.error("[membresia:toggle]", error.code, error.message);
+      setCargando(false);
+      window.alert(
+        t("No se pudo actualizar la membresía. Revisá que el SQL de Miembros esté corrido.")
+      );
+      return;
+    }
+
     setCargando(false);
     onChanged?.();
     router.refresh();

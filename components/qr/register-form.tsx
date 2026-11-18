@@ -10,6 +10,7 @@ import { PAISES } from "@/lib/countries";
 import { SelectMenu } from "@/components/ui/select-menu";
 import { useT } from "@/components/i18n/language-provider";
 import { rutaTarjeta } from "@/lib/config";
+import { claveDia } from "@/lib/fechas";
 
 const PREFIJOS_UNICOS = Array.from(
   new Set(PAISES.map((p) => p.prefijo).filter((p): p is string => Boolean(p)))
@@ -115,6 +116,7 @@ export function RegisterForm({
       telefono: telefonoCompleto,
       pais: iso,
       membresia,
+      membresia_desde: membresia ? claveDia() : null,
       ...(fecha.iso ? { cumpleanos: fecha.iso } : {}),
     };
 

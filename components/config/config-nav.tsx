@@ -4,11 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useT } from "@/components/i18n/language-provider";
+import { useUsuario } from "@/lib/use-usuario";
 
 const ITEMS = [
   {
     href: "/configuracion",
     label: "Perfil",
+    soloAdmin: false,
     // Sello festoneado con check (Tabler "rosette-discount-check", ISC)
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -20,6 +22,7 @@ const ITEMS = [
   {
     href: "/configuracion/personalizar-tarjeta",
     label: "Personalizar tarjeta",
+    soloAdmin: false,
     // Rodillo de pintura (Lucide "paint-roller", ISC)
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -29,11 +32,41 @@ const ITEMS = [
       </svg>
     ),
   },
+  {
+    href: "/configuracion/miembros",
+    label: "Miembros",
+    soloAdmin: true,
+    // Personas (Lucide "users", ISC)
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    href: "/configuracion/promociones",
+    label: "Promociones",
+    soloAdmin: true,
+    // Megáfono (Lucide "megaphone", ISC)
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="m3 11 18-5v12L3 14v-3z" />
+        <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+      </svg>
+    ),
+  },
 ];
 
 export default function ConfigNav() {
   const pathname = usePathname();
   const t = useT();
+  const { usuario } = useUsuario();
+  const items = ITEMS.filter(
+    (item) => !item.soloAdmin || usuario?.role === "admin"
+  );
   const activa = (href: string) =>
     href === "/configuracion"
       ? pathname === "/configuracion"
@@ -46,7 +79,7 @@ export default function ConfigNav() {
         aria-label="Secciones de configuración"
         className="flex flex-wrap gap-2 lg:hidden"
       >
-        {ITEMS.map((item) => (
+        {items.map((item) => (
           <Link
             key={item.href}
             href={item.href}
@@ -66,7 +99,7 @@ export default function ConfigNav() {
       {/* Desktop: menú lateral (tarjeta blanca) */}
       <aside className="hidden rounded-card bg-white p-2 shadow-sm lg:block">
         <nav aria-label="Secciones de configuración" className="flex flex-col">
-          {ITEMS.map((item) => (
+          {items.map((item) => (
             <Link
               key={item.href}
               href={item.href}

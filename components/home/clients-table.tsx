@@ -228,7 +228,9 @@ export function ClientsTable({
                   {esAdmin && <th className="py-3 pr-6 text-right">{t("Membresía")}</th>}
                   {/* Una sola columna de acciones: el logo de WhatsApp convivía
                       solo en una columna y empujaba el scroll horizontal. */}
-                  <th className="py-3 pr-6 text-right">{t("Acciones")}</th>
+                  {(esAdmin || mostrarSellos) && (
+                    <th className="py-3 pr-6 text-right">{t("Acciones")}</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-ink/15">
@@ -260,16 +262,34 @@ export function ClientsTable({
                         <ToggleMembresia clienteId={c.id} membresia={c.membresia} />
                       </td>
                     )}
-                    <td className="py-4 pr-6">
-                      <div className="flex items-center justify-end gap-2">
-                        <BotonWhatsapp
-                          cliente={c}
-                          origen={origen}
-                          className="inline-grid h-9 w-9 place-items-center rounded-full bg-primary text-ink transition-colors hover:bg-primary/90"
-                        />
-                        {esAdmin && <AdminAcciones cliente={c} />}
-                      </div>
-                    </td>
+                    {(esAdmin || mostrarSellos) && (
+                      <td className="py-4 pr-6">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* WhatsApp suspendido para staff por ahora. El admin lo mantiene.
+                              Para reactivarlo al staff, mostrar este bloque también cuando !esAdmin.
+                          {!esAdmin && (
+                            <BotonWhatsapp
+                              cliente={c}
+                              origen={origen}
+                              className="inline-grid h-9 w-9 place-items-center rounded-full bg-primary text-ink transition-colors hover:bg-primary/90"
+                            />
+                          )}
+                          */}
+                          {esAdmin && (
+                            <BotonWhatsapp
+                              cliente={c}
+                              origen={origen}
+                              className="inline-grid h-9 w-9 place-items-center rounded-full bg-primary text-ink transition-colors hover:bg-primary/90"
+                            />
+                          )}
+                          {esAdmin ? (
+                            <AdminAcciones cliente={c} />
+                          ) : (
+                            <AdminAcciones cliente={c} soloSellos />
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -298,11 +318,23 @@ export function ClientsTable({
                     <p className="truncate text-xs text-muted">{c.correo}</p>
                     <p className="truncate text-xs text-muted">{c.telefonoFormato}</p>
                   </div>
-                  <BotonWhatsapp
-                    cliente={c}
-                    origen={origen}
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-ink"
-                  />
+                  {/* WhatsApp suspendido para staff por ahora. El admin lo mantiene.
+                      Para reactivarlo al staff, mostrar este bloque también cuando !esAdmin.
+                  {!esAdmin && (
+                    <BotonWhatsapp
+                      cliente={c}
+                      origen={origen}
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-ink"
+                    />
+                  )}
+                  */}
+                  {esAdmin && (
+                    <BotonWhatsapp
+                      cliente={c}
+                      origen={origen}
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-ink"
+                    />
+                  )}
                 </div>
 
                 {mostrarSellos && (
@@ -315,6 +347,13 @@ export function ClientsTable({
                   <div className="flex flex-wrap items-center justify-between gap-3 pl-11">
                     <ToggleMembresia clienteId={c.id} membresia={c.membresia} />
                     <AdminAcciones cliente={c} />
+                  </div>
+                )}
+
+                {/* Staff: solo el botón de editar sellos, y solo donde se ven sellos. */}
+                {!esAdmin && mostrarSellos && (
+                  <div className="flex justify-end pl-11">
+                    <AdminAcciones cliente={c} soloSellos />
                   </div>
                 )}
               </li>

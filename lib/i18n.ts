@@ -116,11 +116,21 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Quitar membresía": "Remove membership",
   "Hacer miembro (sigue acumulando sellos)": "Make member (they keep earning stamps)",
   "Quitar membresía (sigue como cliente regular)": "Remove membership (they remain a regular client)",
+  "No se pudo actualizar la membresía. Revisá que el SQL de Miembros esté corrido.":
+    "The membership couldn't be updated. Check that the Members SQL has been run.",
   "Guardando…": "Saving…",
   "Enviar tarjeta de": "Send card of",
 
   // ===== Acciones de admin =====
   "Editar cliente": "Edit client",
+  "Editar sellos": "Edit stamps",
+  "Editar sellos de": "Edit stamps of",
+  "Ajustá manualmente los sellos acumulados. El resto de los datos solo lo edita el administrador.":
+    "Manually adjust accumulated stamps. Only the admin can edit the rest of the details.",
+  "No se pudo generar el premio. Los sellos no se modificaron.":
+    "The reward couldn't be created. Stamps were not changed.",
+  "No se pudieron actualizar los sellos. Intentá de nuevo.":
+    "The stamps couldn't be updated. Try again.",
   "Los cambios se guardan al instante.": "Changes save instantly.",
   "Cliente con membresía": "Client with membership",
   "Se suma a la tarjeta regular: seguís acumulando sellos.":
@@ -220,8 +230,8 @@ export const DICCIONARIO_EN: Record<string, string> = {
     "Business details are managed by the salon admin. Ask the owner if you need something changed.",
   "Tu nombre": "Your name",
   "Tu correo": "Your email",
-  "Elegí el color de acento y la recompensa de tu programa. Todos los clientes, incluidos los miembros, usan la misma tarjeta de sellos.":
-    "Pick your accent color and reward. All clients, including members, use the same stamp card.",
+  "Elegí la recompensa de tu programa. Todos los clientes, incluidos los miembros, usan la misma tarjeta de sellos.":
+    "Choose your program reward. All clients, including members, use the same stamp card.",
   "✅ Tarjeta de cliente actualizada.": "✅ Client card updated.",
   "No se pudieron guardar los cambios. Intentá de nuevo.":
     "Couldn't save the changes. Try again.",
@@ -246,8 +256,14 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Miembro": "Member",
   "Tu código único": "Your unique code",
   "Por completar": "To complete",
-  "¡Recompensa lista! Passé por el salón a canjearla.":
+  "¡Recompensa lista! Pasá por el salón a canjearla.":
     "Your reward is ready! Stop by the salon to redeem it.",
+  "Ampliar QR para escanear": "Open QR to scan",
+  "Ampliar código QR para escanear": "Open QR code to scan",
+  "Código QR para escanear": "QR code to scan",
+  "Código QR de la tarjeta de": "QR code for the card of",
+  "Acerca el teléfono al lector del salón": "Hold your phone near the salon reader",
+  "Cerrar": "Close",
   "Tu tarjeta de cliente": "Your client card",
   "No encontramos esa tarjeta": "We couldn't find that card",
   "Revisá el link que te pasamos o pedile al salón que te lo reenvíe.":
@@ -297,6 +313,225 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Queda pendiente en la campana hasta que lo entregues.":
     "It stays pending in the bell until you deliver it.",
   "Casi premio": "Almost there",
+
+  // ===== Miembros (Fase 1) =====
+  "Miembros": "Members",
+  "Membresía mensual": "Monthly membership",
+  "Cuota de": "Fee of",
+  "de cada mes": "of every month",
+  "días de gracia": "grace days",
+  "La cuota se paga desde el primer mes de inscripción.":
+    "The fee is charged from the first month of enrollment.",
+  "Cuota por defecto": "Default fee",
+  "Monto por defecto": "Default amount",
+  "Guardar monto": "Save amount",
+  "Se aplica a las cuotas nuevas. Las cuotas ya creadas conservan su monto.":
+    "Applies to new dues. Dues already created keep their amount.",
+  "Falta correr el SQL de Miembros o Promociones en Supabase.":
+    "The Members or Promotions SQL hasn't been run in Supabase yet.",
+  "Ejecutá el SQL pendiente en el SQL Editor. Mientras tanto, algunas funciones pueden quedar en modo lectura.":
+    "Run the pending SQL in the SQL Editor. Until then, some features may stay read-only.",
+  "Detalle técnico": "Technical details",
+  "Al día": "Up to date",
+  "Pendientes": "Pending",
+  "Vencidos": "Overdue",
+  "Revisar": "Review",
+  "Por vencer": "Due soon",
+  "Vencido": "Overdue",
+  "Sin período": "No period",
+  "Exento": "Exempt",
+  "Pagado": "Paid",
+  "Pendiente": "Pending",
+  "Por cobrar": "Outstanding",
+  "Cobrado este mes": "Collected this month",
+  "al día": "up to date",
+  "cuota pendiente": "pending due",
+  "cuotas pendientes": "pending dues",
+  "Buscar por nombre, código o correo": "Search by name, code or email",
+  "Nombre, código o correo": "Name, code or email",
+  "pago registrado": "payment recorded",
+  "pagos registrados": "payments recorded",
+  "Recordar a pendientes": "Remind pending members",
+  "Todavía no hay miembros.": "There are no members yet.",
+  "Ningún miembro coincide con los filtros.":
+    "No members match the filters.",
+  "Marcá a una clienta como miembro desde Home para empezar.":
+    "Mark a client as a member from Home to get started.",
+  "Probá con otro nombre o limpiá los filtros.":
+    "Try another name or clear the filters.",
+  "Estado": "Status",
+  "Cuota": "Fee",
+  "Último pago": "Last payment",
+  "Sin correo cargado": "No email on file",
+  "cuotas": "dues",
+  "Registrar pago": "Record payment",
+  "Marcar al día": "Mark as paid",
+  "Enviar recordatorio": "Send reminder",
+  "Ver historial": "View history",
+  "Detalle": "Details",
+  "Recordar": "Remind",
+  "Elegí una cuota.": "Choose a due.",
+  "El monto debe ser mayor o igual a 0.":
+    "The amount must be greater than or equal to 0.",
+  "No se pudo guardar el pago. Intentá de nuevo.":
+    "The payment couldn't be saved. Try again.",
+  "Guardar pago": "Save payment",
+  "No hay cuotas pendientes.": "There are no pending dues.",
+  "Esta clienta ya está al día.": "This client is already up to date.",
+  "¿Qué cuota pagó?": "Which due was paid?",
+  "Cuota exenta": "Exempt due",
+  "Cuota exenta, no se cobra.": "Exempt due, no charge.",
+  "Vence el": "Due on",
+  "vence el": "due on",
+  "Sin vencimiento": "No due date",
+  "Monto": "Amount",
+  "Nota (opcional)": "Note (optional)",
+  "Ej. pagó en efectivo, transferencia, etc.":
+    "E.g. paid in cash, transfer, etc.",
+  "Se registra solo la cuota elegida. Si hay meses anteriores pendientes, podés marcarlos uno por uno.":
+    "Only the selected due is recorded. If previous months are pending, you can mark them one by one.",
+  "No se pudo actualizar la marca de revisar.":
+    "The review flag couldn't be updated.",
+  "Se quitó la marca de revisar.": "Review flag cleared.",
+  "Se marcó para revisar.": "Marked for review.",
+  "Deshacer pago": "Undo payment",
+  "Desmarcar al día": "Mark as unpaid",
+  "Deshacer el último pago": "Undo the last payment",
+  "¿Desmarcar este pago?": "Undo this payment?",
+  "La cuota volverá a pendiente y la clienta dejará de figurar al día.":
+    "The due will go back to pending and the client will no longer appear as up to date.",
+  "Sí, desmarcar": "Yes, mark as unpaid",
+  "Desmarcando…": "Marking as unpaid…",
+  "¿Deshacer este pago? La cuota vuelve a pendiente.":
+    "Undo this payment? The due will go back to pending.",
+  "No se pudo deshacer el pago.": "The payment couldn't be undone.",
+  "Pago deshecho. La cuota volvió a pendiente.":
+    "Payment undone. The due is pending again.",
+  "¿Quitar la membresía? La clienta sigue como cliente regular y conserva sus sellos.":
+    "Remove the membership? The client stays a regular client and keeps their stamps.",
+  "No se pudo quitar la membresía.": "The membership couldn't be removed.",
+  "Membresía quitada. Sigue como cliente regular.":
+    "Membership removed. They remain a regular client.",
+  "Miembro desde": "Member since",
+  "Cuota actual": "Current fee",
+  "Total pagado:": "Total paid:",
+  "Historial de cuotas": "Due history",
+  "Todavía no hay cuotas generadas.": "No dues have been generated yet.",
+  "Nota:": "Note:",
+  "Pagado el": "Paid on",
+  "Quitar revisar": "Clear review",
+  "Marcar para revisar": "Mark for review",
+  "La clienta sigue acumulando sellos en su tarjeta regular.":
+    "The client keeps earning stamps on their regular card.",
+  "Enviar recordatorios": "Send reminders",
+  "Enviando…": "Sending…",
+  "Se enviará un correo a": "An email will be sent to",
+  "clienta": "client",
+  "clientas": "clients",
+  "con cuotas pendientes y correo cargado.":
+    "with pending dues and an email on file.",
+  "Se manda un solo recordatorio por clienta, por la cuota más vieja pendiente.":
+    "One reminder is sent per client, for the oldest pending due.",
+  "La clienta no tiene un correo válido.":
+    "The client doesn't have a valid email.",
+  "No se pudo enviar el recordatorio.": "The reminder couldn't be sent.",
+  "Recordatorio enviado a": "Reminder sent to",
+  "Se enviaron": "Sent",
+  "recordatorio": "reminder",
+  "recordatorios": "reminders",
+  "omitidos": "skipped",
+  "con error": "with errors",
+  "No se pudieron enviar los recordatorios.":
+    "The reminders couldn't be sent.",
+  "Pago registrado.": "Payment recorded.",
+  "No se pudo guardar el monto. Intentá de nuevo.":
+    "The amount couldn't be saved. Try again.",
+  "Monto guardado.": "Amount saved.",
+  "Membresía vencida: se registró como cliente regular.":
+    "Membership overdue: recorded as a regular client.",
+
+  // ===== Promociones (Fase 2) =====
+  "Promociones": "Promotions",
+  "Campañas para miembros": "Member campaigns",
+  "Escribí una promoción del mes y enviála por correo a tus miembros.":
+    "Write a monthly promotion and email it to your members.",
+  "Enviar promoción": "Send promotion",
+  "Sí, enviar": "Yes, send",
+  "Asunto": "Subject",
+  "Título": "Title",
+  "Título de la promoción": "Promotion title",
+  "Mensaje": "Message",
+  "Destinatarios": "Recipients",
+  "miembro": "member",
+  "miembros": "members",
+  "enviado": "sent",
+  "enviados": "sent",
+  "Enviados:": "Sent:",
+  "Omitidos:": "Skipped:",
+  "Con error:": "With errors:",
+  "Errores": "Errors",
+  "No hubo errores.": "There were no errors.",
+  "Válida hasta el": "Valid until",
+  "Válida hasta": "Valid until",
+  "(opcional)": "(optional)",
+  "Campaña cargada en el compositor.": "Campaign loaded into the composer.",
+  "Completá asunto, título y mensaje antes de enviar.":
+    "Fill in subject, title and message before sending.",
+  "No hay miembros con correo válido para enviar.":
+    "There are no members with a valid email to send to.",
+  "Por ahora se pueden enviar hasta": "For now, up to",
+  "miembros por campaña.": "members per campaign.",
+  "No se pudo enviar la promoción.": "The promotion couldn't be sent.",
+  "Correo de prueba enviado a tu correo.":
+    "Test email sent to your email.",
+  "correo enviado": "email sent",
+  "correos enviados": "emails sent",
+  "Campaña enviada:": "Campaign sent:",
+  "No se pudo conectar con el servidor. Intentá de nuevo.":
+    "Couldn't connect to the server. Try again.",
+  "Falta correr el SQL de Promociones en Supabase.":
+    "The Promotions SQL hasn't been run in Supabase yet.",
+  "Mientras tanto, el envío está desactivado.":
+    "Until then, sending is disabled.",
+  "El correo saluda con el nombre de cada clienta.":
+    "The email greets each client by name.",
+  "Limpiar": "Clear",
+  "Ej.: 20% en tu próximo servicio": "E.g. 20% off your next service",
+  "Ej.: 20% de descuento para miembros": "E.g. 20% off for members",
+  "Escribí el mensaje que van a recibir tus miembros.":
+    "Write the message your members will receive.",
+  "No hace falta saludar: el correo ya incluye el nombre de la clienta.":
+    "No need to greet: the email already includes the client's name.",
+  "Se enviará a": "It will be sent to",
+  "miembros con correo válido.": "members with a valid email.",
+  "sin correo": "without email",
+  "dados de baja": "opted out",
+  "Enviar prueba a mi correo": "Send test to my email",
+  "Enviar a miembros": "Send to members",
+  "Vista previa": "Preview",
+  "Así lo va a ver la clienta": "This is how the client will see it",
+  "Promoción para miembros": "Promotion for members",
+  "Hola": "Hello",
+  "Tu mensaje aparecerá acá.": "Your message will appear here.",
+  "Ver mi tarjeta": "View my card",
+  "Si no querés recibir promociones, avisanos en el salón.":
+    "If you don't want to receive promotions, let us know at the salon.",
+  "Campañas enviadas": "Sent campaigns",
+  "Historial de las últimas campañas.": "History of the latest campaigns.",
+  "Todavía no enviaste campañas.": "You haven't sent any campaigns yet.",
+  "Ver": "View",
+  "Reutilizar": "Reuse",
+  "No se puede deshacer. Revisá la vista previa antes de enviar.":
+    "This can't be undone. Review the preview before sending.",
+  "Promociones por correo": "Email promotions",
+  "No recibe promociones.": "Doesn't receive promotions.",
+  "Recibe promociones.": "Receives promotions.",
+  "Recibir promociones": "Receive promotions",
+  "La clienta no recibirá promociones.": "The client won't receive promotions.",
+  "La clienta volverá a recibir promociones.":
+    "The client will receive promotions again.",
+  "No se pudo actualizar. Revisá que el SQL de Promociones esté corrido.":
+    "Couldn't update. Check that the Promotions SQL has been run.",
 };
 
 export type Idioma = "es" | "en";

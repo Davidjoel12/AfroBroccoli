@@ -10,7 +10,7 @@
 // /api/premio, el cron de cumpleaños y el escáner.
 // ============================================================================
 
-import { claveDia, ZONA_HORARIA } from "./fechas";
+import { claveDia, MESES, ZONA_HORARIA } from "./fechas";
 
 export type DatosPremio = {
   folio: string;
@@ -310,6 +310,75 @@ export function construirCorreoAviso(datos: DatosAviso) {
     urlTarjeta,
     acento: "#6FC22D",
     pie: "Tu próximo sello es el premio. Te esperamos en AfroBroccoli.",
+  });
+
+  return { asunto, html, texto };
+}
+
+export type DatosRecordatorioMembresia = {
+  nombre: string;
+  codigo: string;
+  correo: string;
+  /** Primer día del mes de la cuota: "2026-11-01". */
+  periodo: string;
+  monto: number;
+  venceEl: string | null;
+  /** Origen absoluto del sitio (https://afrobroccoli.vercel.app). */
+  origen: string;
+  fecha?: Date;
+};
+
+/** Recordatorio amable de una cuota mensual pendiente. */
+export function construirCorreoRecordatorioMembresia(
+  datos: DatosRecordatorioMembresia
+) {
+  const urlTarjeta = `${datos.origen.replace(/\/$/, "")}/c/${encodeURIComponent(datos.codigo)}`;
+  const [anio, mes] = datos.periodo.slice(0, 10).split("-").map(Number);
+  const nombreMes = MESES[mes - 1] ?? "";
+  const mesTexto = `${nombreMes} ${anio}`.trim();
+  const montoTexto = new Intl.NumberFormat("es-PA", {
+    style: "currency",
+    currency: "USD",
+    currencyDisplay: "narrowSymbol",
+    minimumFractionDigits: 2,
+  }).format(Number.isFinite(datos.monto) ? datos.monto : 0);
+
+  const venceTexto = (() => {
+    if (!datos.venceEl) return "el 28 del mes";
+    const [a, m, d] = datos.venceEl.slice(0, 10).split("-").map(Number);
+    const nombre = MESES[m - 1];
+    if (!a || !nombre || !d) return "el 28 del mes";
+    return `${d} de ${nombre.toLowerCase()} de ${a}`;
+  })();
+
+  const asunto = `Tu membresía de AfroBroccoli · ${mesTexto}`;
+
+  const texto = [
+    `Hola ${datos.nombre},`,
+    "",
+    `Te recordamos que la cuota de ${mesTexto} de tu membresía sigue pendiente.`,
+    `Monto: ${montoTexto}`,
+    `Vence: ${venceTexto}`,
+    "",
+    "Si ya pagaste, ignorá este mensaje.",
+    "Gracias por ser parte de AfroBroccoli.",
+    "",
+    `Tu tarjeta: ${urlTarjeta}`,
+    "",
+    "Equipo AfroBroccoli",
+  ].join("\n");
+
+  const html = plantillaCorreo({
+    etiqueta: "Membresía",
+    titulo: `Hola ${datos.nombre}, tu cuota de ${mesTexto} está pendiente`,
+    intro:
+      "Te recordamos que la cuota mensual de tu membresía sigue pendiente.",
+    destacadoEtiqueta: "Cuota mensual",
+    destacado: montoTexto,
+    detalle: `Vence el ${venceTexto}. Si ya pagaste, ignorá este mensaje.`,
+    urlTarjeta,
+    acento: "#FF66C4",
+    pie: "Gracias por ser parte de AfroBroccoli.",
   });
 
   return { asunto, html, texto };
