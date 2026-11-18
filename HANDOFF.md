@@ -8,7 +8,7 @@
 - Tercera opción **Miembros** en Configuración, visible y accesible **solo para admin**. Ruta: `/configuracion/miembros`.
 - Tabla nueva `membresias_periodos` para conservar el historial de cuotas. La membresía sigue siendo un plus: una sola tarjeta regular de sellos para todos.
 - Reglas: cuota por defecto **$65**, vence el **28**, **5 días de gracia** y **se paga desde el primer mes de inscripción**. Los miembros que ya existían al lanzar arrancan con el **mes actual pendiente**. No se cobran meses futuros.
-- Una cuota impaga pasa a **Revisar** un mes después de su vencimiento. El admin puede marcar pagos, deshacer pagos, ver historial, editar el monto por defecto y enviar recordatorios.
+- Una cuota impaga pasa a **Revisar** un mes después de su vencimiento. El admin puede marcar pagos, deshacer pagos (desde el historial o con el botón rápido **Desmarcar al día**), ver historial, editar el monto por defecto y enviar recordatorios.
 - El escáner usa `membresia_estado(uuid)`: si la membresía está vencida, registra la visita como **cliente regular** y avisa en pantalla. Siempre suma sellos a la tarjeta regular.
 - Recordatorios por correo en `/api/miembros/recordatorio` (solo admin, máximo 50 IDs por request; la UI los manda en lotes). Usa el proveedor configurado en `lib/email.ts` (Gmail → Brevo → Resend).
 - Plantilla `construirCorreoRecordatorioMembresia` en `lib/premios.ts`.

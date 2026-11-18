@@ -395,6 +395,8 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Se quitó la marca de revisar.": "Review flag cleared.",
   "Se marcó para revisar.": "Marked for review.",
   "Deshacer pago": "Undo payment",
+  "Desmarcar al día": "Mark as unpaid",
+  "Deshacer el último pago": "Undo the last payment",
   "¿Deshacer este pago? La cuota vuelve a pendiente.":
     "Undo this payment? The due will go back to pending.",
   "No se pudo deshacer el pago.": "The payment couldn't be undone.",

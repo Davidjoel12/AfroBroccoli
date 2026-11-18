@@ -885,6 +885,7 @@ export default function MiembrosPanel({
   const [confirmarRecordatorio, setConfirmarRecordatorio] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [recordandoId, setRecordandoId] = useState<string | null>(null);
+  const [desmarcandoId, setDesmarcandoId] = useState<string | null>(null);
 
   const resumen = useMemo(() => {
     const alDia = miembros.filter((miembro) => miembro.estado === "al_dia").length;
@@ -965,6 +966,40 @@ export default function MiembrosPanel({
   function pagoGuardado() {
     setPago(null);
     setAviso({ tipo: "ok", texto: t("Pago registrado.") });
+    router.refresh();
+  }
+
+  async function desmarcarAlDia(miembro: MiembroMembresia) {
+    const periodo = miembro.ultimoPago;
+    if (!periodo) return;
+
+    if (!window.confirm(t("¿Deshacer este pago? La cuota vuelve a pendiente."))) {
+      return;
+    }
+
+    setDesmarcandoId(miembro.id);
+    setAviso(null);
+
+    const { error } = await supabase
+      .from("membresias_periodos")
+      .update({ estado: "pendiente", pagado_at: null, revisar: false })
+      .eq("id", periodo.id);
+
+    if (error) {
+      console.error("[miembros:desmarcar]", error.code, error.message);
+      setAviso({
+        tipo: "error",
+        texto: t("No se pudo deshacer el pago."),
+      });
+      setDesmarcandoId(null);
+      return;
+    }
+
+    setDesmarcandoId(null);
+    setAviso({
+      tipo: "ok",
+      texto: t("Pago deshecho. La cuota volvió a pendiente."),
+    });
     router.refresh();
   }
 
@@ -1414,6 +1449,19 @@ export default function MiembrosPanel({
                                   {t("Marcar al día")}
                                 </button>
                               )}
+                              {miembro.estado === "al_dia" && miembro.ultimoPago && (
+                                <button
+                                  type="button"
+                                  disabled={desmarcandoId === miembro.id}
+                                  onClick={() => desmarcarAlDia(miembro)}
+                                  title={t("Deshacer el último pago")}
+                                  className="inline-flex h-9 items-center rounded-full border border-ink/15 bg-white px-3 text-xs font-semibold text-muted transition-colors hover:bg-cream hover:text-ink disabled:opacity-50"
+                                >
+                                  {desmarcandoId === miembro.id
+                                    ? t("Guardando…")
+                                    : t("Desmarcar al día")}
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 title={t("Enviar recordatorio")}
@@ -1513,6 +1561,19 @@ export default function MiembrosPanel({
                             className="inline-flex h-9 items-center rounded-full bg-primary px-3 text-xs font-semibold text-ink"
                           >
                             {t("Marcar al día")}
+                          </button>
+                        )}
+                        {miembro.estado === "al_dia" && miembro.ultimoPago && (
+                          <button
+                            type="button"
+                            disabled={desmarcandoId === miembro.id}
+                            onClick={() => desmarcarAlDia(miembro)}
+                            title={t("Deshacer el último pago")}
+                            className="inline-flex h-9 items-center rounded-full border border-ink/15 bg-white px-3 text-xs font-semibold text-muted disabled:opacity-50"
+                          >
+                            {desmarcandoId === miembro.id
+                              ? t("Guardando…")
+                              : t("Desmarcar al día")}
                           </button>
                         )}
                         <button
