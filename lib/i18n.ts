@@ -397,6 +397,11 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Deshacer pago": "Undo payment",
   "Desmarcar al día": "Mark as unpaid",
   "Deshacer el último pago": "Undo the last payment",
+  "¿Desmarcar este pago?": "Undo this payment?",
+  "La cuota volverá a pendiente y la clienta dejará de figurar al día.":
+    "The due will go back to pending and the client will no longer appear as up to date.",
+  "Sí, desmarcar": "Yes, mark as unpaid",
+  "Desmarcando…": "Marking as unpaid…",
   "¿Deshacer este pago? La cuota vuelve a pendiente.":
     "Undo this payment? The due will go back to pending.",
   "No se pudo deshacer el pago.": "The payment couldn't be undone.",

@@ -534,12 +534,125 @@ function PagoModal({
   );
 }
 
+function DesmarcarModal({
+  miembro,
+  periodo,
+  hoy,
+  diasGracia,
+  desmarcando,
+  error,
+  onClose,
+  onConfirm,
+}: {
+  miembro: MiembroMembresia;
+  periodo: PeriodoMembresia;
+  hoy: string;
+  diasGracia: number;
+  desmarcando: boolean;
+  error: string;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const t = useT();
+  const partes = partesMes(periodo.periodo);
+
+  return (
+    <Modal
+      titulo={t("Desmarcar al día")}
+      subtitulo={`${miembro.nombre} · ${miembro.codigo}`}
+      onClose={onClose}
+      ancho="max-w-xl"
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="subtle"
+            onClick={onClose}
+            disabled={desmarcando}
+          >
+            {t("Cancelar")}
+          </Button>
+          <Button
+            type="button"
+            variant="subtle"
+            onClick={onConfirm}
+            disabled={desmarcando}
+            className="border-danger/25 bg-danger/5 text-danger hover:bg-danger/10"
+          >
+            {desmarcando ? t("Desmarcando…") : t("Sí, desmarcar")}
+          </Button>
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="rounded-xl border border-danger/20 bg-danger/5 p-4">
+          <p className="text-sm font-semibold text-ink">
+            {t("¿Desmarcar este pago?")}
+          </p>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            {t("La cuota volverá a pendiente y la clienta dejará de figurar al día.")}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-cream/70 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-ink">
+                {t(partes.mes)} {partes.anio}
+              </p>
+              <p className="mt-0.5 text-xs text-muted">
+                {formatearMonto(periodo.monto)}
+                {periodo.venceEl
+                  ? ` · ${t("Vence el")} ${fechaCorta(periodo.venceEl)}`
+                  : ""}
+              </p>
+            </div>
+            <EstadoCuotaBadge
+              periodo={periodo}
+              hoy={hoy}
+              diasGracia={diasGracia}
+            />
+          </div>
+
+          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-muted">{t("Pagado el")}</dt>
+              <dd className="font-semibold text-ink">
+                {fechaCorta(periodo.pagadoAt)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted">{t("Monto")}</dt>
+              <dd className="font-semibold text-ink">
+                {formatearMonto(periodo.monto)}
+              </dd>
+            </div>
+          </dl>
+
+          {periodo.nota && (
+            <p className="mt-2 text-xs text-muted">
+              {t("Nota:")} {periodo.nota}
+            </p>
+          )}
+        </div>
+
+        {error && (
+          <p className="rounded-lg bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
+            {error}
+          </p>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function DetalleModal({
   miembro,
   config,
   hoy,
   onClose,
   onPago,
+  onDesmarcarPago,
   onChanged,
 }: {
   miembro: MiembroMembresia;
@@ -547,6 +660,7 @@ function DetalleModal({
   hoy: string;
   onClose: () => void;
   onPago: (periodoId: string) => void;
+  onDesmarcarPago: (periodo: PeriodoMembresia) => void;
   onChanged: (texto: string, tipo?: "ok" | "error") => void;
 }) {
   const t = useT();
@@ -581,26 +695,8 @@ function DetalleModal({
     );
   }
 
-  async function deshacerPago(periodo: PeriodoMembresia) {
-    if (!window.confirm(t("¿Deshacer este pago? La cuota vuelve a pendiente."))) {
-      return;
-    }
-
-    setTrabajando(true);
-    setError("");
-    const { error: errGuardar } = await supabase
-      .from("membresias_periodos")
-      .update({ estado: "pendiente", pagado_at: null, revisar: false })
-      .eq("id", periodo.id);
-
-    if (errGuardar) {
-      setError(t("No se pudo deshacer el pago."));
-      setTrabajando(false);
-      return;
-    }
-
-    setTrabajando(false);
-    onChanged(t("Pago deshecho. La cuota volvió a pendiente."));
+  function deshacerPago(periodo: PeriodoMembresia) {
+    onDesmarcarPago(periodo);
   }
 
   async function quitarMembresia() {
@@ -882,6 +978,11 @@ export default function MiembrosPanel({
     periodoId?: string;
   } | null>(null);
   const [detalle, setDetalle] = useState<MiembroMembresia | null>(null);
+  const [desmarcar, setDesmarcar] = useState<{
+    miembro: MiembroMembresia;
+    periodo: PeriodoMembresia;
+  } | null>(null);
+  const [errorDesmarcar, setErrorDesmarcar] = useState("");
   const [confirmarRecordatorio, setConfirmarRecordatorio] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [recordandoId, setRecordandoId] = useState<string | null>(null);
@@ -969,16 +1070,31 @@ export default function MiembrosPanel({
     router.refresh();
   }
 
-  async function desmarcarAlDia(miembro: MiembroMembresia) {
-    const periodo = miembro.ultimoPago;
-    if (!periodo) return;
+  function abrirDesmarcar(
+    miembro: MiembroMembresia,
+    periodo?: PeriodoMembresia | null
+  ) {
+    const objetivo = periodo ?? miembro.ultimoPago;
+    if (!objetivo) return;
 
-    if (!window.confirm(t("¿Deshacer este pago? La cuota vuelve a pendiente."))) {
-      return;
-    }
+    setDetalle(null);
+    setPago(null);
+    setErrorDesmarcar("");
+    setDesmarcar({ miembro, periodo: objetivo });
+  }
 
+  function cerrarDesmarcar() {
+    if (desmarcandoId) return;
+    setDesmarcar(null);
+    setErrorDesmarcar("");
+  }
+
+  async function confirmarDesmarcar() {
+    if (!desmarcar) return;
+
+    const { miembro, periodo } = desmarcar;
     setDesmarcandoId(miembro.id);
-    setAviso(null);
+    setErrorDesmarcar("");
 
     const { error } = await supabase
       .from("membresias_periodos")
@@ -987,15 +1103,13 @@ export default function MiembrosPanel({
 
     if (error) {
       console.error("[miembros:desmarcar]", error.code, error.message);
-      setAviso({
-        tipo: "error",
-        texto: t("No se pudo deshacer el pago."),
-      });
+      setErrorDesmarcar(t("No se pudo deshacer el pago."));
       setDesmarcandoId(null);
       return;
     }
 
     setDesmarcandoId(null);
+    setDesmarcar(null);
     setAviso({
       tipo: "ok",
       texto: t("Pago deshecho. La cuota volvió a pendiente."),
@@ -1453,7 +1567,7 @@ export default function MiembrosPanel({
                                 <button
                                   type="button"
                                   disabled={desmarcandoId === miembro.id}
-                                  onClick={() => desmarcarAlDia(miembro)}
+                                  onClick={() => abrirDesmarcar(miembro)}
                                   title={t("Deshacer el último pago")}
                                   className="inline-flex h-9 items-center rounded-full border border-ink/15 bg-white px-3 text-xs font-semibold text-muted transition-colors hover:bg-cream hover:text-ink disabled:opacity-50"
                                 >
@@ -1567,7 +1681,7 @@ export default function MiembrosPanel({
                           <button
                             type="button"
                             disabled={desmarcandoId === miembro.id}
-                            onClick={() => desmarcarAlDia(miembro)}
+                            onClick={() => abrirDesmarcar(miembro)}
                             title={t("Deshacer el último pago")}
                             className="inline-flex h-9 items-center rounded-full border border-ink/15 bg-white px-3 text-xs font-semibold text-muted disabled:opacity-50"
                           >
@@ -1635,11 +1749,25 @@ export default function MiembrosPanel({
           hoy={hoy}
           onClose={() => setDetalle(null)}
           onPago={(periodoId) => abrirPago(detalle, periodoId)}
+          onDesmarcarPago={(periodo) => abrirDesmarcar(detalle, periodo)}
           onChanged={(texto, tipo = "ok") => {
             setDetalle(null);
             setAviso({ tipo, texto });
             router.refresh();
           }}
+        />
+      )}
+
+      {desmarcar && (
+        <DesmarcarModal
+          miembro={desmarcar.miembro}
+          periodo={desmarcar.periodo}
+          hoy={hoy}
+          diasGracia={config.diasGracia}
+          desmarcando={desmarcandoId === desmarcar.miembro.id}
+          error={errorDesmarcar}
+          onClose={cerrarDesmarcar}
+          onConfirm={confirmarDesmarcar}
         />
       )}
 
