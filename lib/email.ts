@@ -6,8 +6,9 @@
 //   2. Brevo      -> BREVO_API_KEY + EMAIL_FROM
 //   3. Resend     -> RESEND_API_KEY + EMAIL_FROM
 //
-// Lo usan /api/premio, /api/aviso y el cron de cumpleaños. Las plantillas no
-// viven acá: este archivo solo transporta un correo ya armado.
+// Lo usan /api/premio, /api/aviso, /api/miembros/recordatorio,
+// /api/miembros/promocion y el cron de cumpleaños. Las plantillas no viven
+// acá: este archivo solo transporta un correo ya armado.
 // ============================================================================
 
 import nodemailer from "nodemailer";
@@ -103,6 +104,48 @@ export async function enviarCorreo(
       detalle: detalleError(err),
     };
   }
+}
+
+/**
+ * Revisa si hay un proveedor listo antes de mandar una campaña completa.
+ * Evita empezar a enviar y descubrir a mitad de camino que faltan las
+ * credenciales. Refleja las mismas prioridades que `enviarCorreo`.
+ */
+export function correoConfigurado():
+  | { ok: true }
+  | { ok: false; mensaje: string } {
+  const gmailUser = process.env.GMAIL_USER?.trim();
+  const gmailPass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "");
+  const brevoKey = process.env.BREVO_API_KEY?.trim();
+  const resendKey = process.env.RESEND_API_KEY?.trim();
+  const remitenteCrudo = process.env.EMAIL_FROM?.trim();
+
+  if (gmailUser) {
+    if (!gmailPass) {
+      return {
+        ok: false,
+        mensaje: "Falta GMAIL_APP_PASSWORD para enviar con la cuenta de Gmail.",
+      };
+    }
+    return { ok: true };
+  }
+
+  if (brevoKey) {
+    if (!remitenteCrudo) {
+      return {
+        ok: false,
+        mensaje: "Falta EMAIL_FROM: en Brevo el correo remitente debe estar verificado.",
+      };
+    }
+    return { ok: true };
+  }
+
+  if (resendKey) return { ok: true };
+
+  return {
+    ok: false,
+    mensaje: "Falta configurar GMAIL_USER y GMAIL_APP_PASSWORD en el servidor.",
+  };
 }
 
 /**

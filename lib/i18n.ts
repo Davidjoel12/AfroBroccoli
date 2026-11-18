@@ -327,10 +327,10 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Guardar monto": "Save amount",
   "Se aplica a las cuotas nuevas. Las cuotas ya creadas conservan su monto.":
     "Applies to new dues. Dues already created keep their amount.",
-  "Falta correr el SQL de Miembros en Supabase.":
-    "The Members SQL hasn't been run in Supabase yet.",
-  "Ejecutá el archivo supabase/fase-1-miembros.sql en el SQL Editor. Mientras tanto, la página puede quedar en modo lectura.":
-    "Run supabase/fase-1-miembros.sql in the SQL Editor. Until then, this page may stay read-only.",
+  "Falta correr el SQL de Miembros o Promociones en Supabase.":
+    "The Members or Promotions SQL hasn't been run in Supabase yet.",
+  "Ejecutá el SQL pendiente en el SQL Editor. Mientras tanto, algunas funciones pueden quedar en modo lectura.":
+    "Run the pending SQL in the SQL Editor. Until then, some features may stay read-only.",
   "Detalle técnico": "Technical details",
   "Al día": "Up to date",
   "Pendientes": "Pending",
@@ -449,6 +449,89 @@ export const DICCIONARIO_EN: Record<string, string> = {
   "Monto guardado.": "Amount saved.",
   "Membresía vencida: se registró como cliente regular.":
     "Membership overdue: recorded as a regular client.",
+
+  // ===== Promociones (Fase 2) =====
+  "Promociones": "Promotions",
+  "Campañas para miembros": "Member campaigns",
+  "Escribí una promoción del mes y enviála por correo a tus miembros.":
+    "Write a monthly promotion and email it to your members.",
+  "Enviar promoción": "Send promotion",
+  "Sí, enviar": "Yes, send",
+  "Asunto": "Subject",
+  "Título": "Title",
+  "Título de la promoción": "Promotion title",
+  "Mensaje": "Message",
+  "Destinatarios": "Recipients",
+  "miembro": "member",
+  "miembros": "members",
+  "enviado": "sent",
+  "enviados": "sent",
+  "Enviados:": "Sent:",
+  "Omitidos:": "Skipped:",
+  "Con error:": "With errors:",
+  "Errores": "Errors",
+  "No hubo errores.": "There were no errors.",
+  "Válida hasta el": "Valid until",
+  "Válida hasta": "Valid until",
+  "(opcional)": "(optional)",
+  "Campaña cargada en el compositor.": "Campaign loaded into the composer.",
+  "Completá asunto, título y mensaje antes de enviar.":
+    "Fill in subject, title and message before sending.",
+  "No hay miembros con correo válido para enviar.":
+    "There are no members with a valid email to send to.",
+  "Por ahora se pueden enviar hasta": "For now, up to",
+  "miembros por campaña.": "members per campaign.",
+  "No se pudo enviar la promoción.": "The promotion couldn't be sent.",
+  "Correo de prueba enviado a tu correo.":
+    "Test email sent to your email.",
+  "correo enviado": "email sent",
+  "correos enviados": "emails sent",
+  "Campaña enviada:": "Campaign sent:",
+  "No se pudo conectar con el servidor. Intentá de nuevo.":
+    "Couldn't connect to the server. Try again.",
+  "Falta correr el SQL de Promociones en Supabase.":
+    "The Promotions SQL hasn't been run in Supabase yet.",
+  "Mientras tanto, el envío está desactivado.":
+    "Until then, sending is disabled.",
+  "El correo saluda con el nombre de cada clienta.":
+    "The email greets each client by name.",
+  "Limpiar": "Clear",
+  "Ej.: 20% en tu próximo servicio": "E.g. 20% off your next service",
+  "Ej.: 20% de descuento para miembros": "E.g. 20% off for members",
+  "Escribí el mensaje que van a recibir tus miembros.":
+    "Write the message your members will receive.",
+  "No hace falta saludar: el correo ya incluye el nombre de la clienta.":
+    "No need to greet: the email already includes the client's name.",
+  "Se enviará a": "It will be sent to",
+  "miembros con correo válido.": "members with a valid email.",
+  "sin correo": "without email",
+  "dados de baja": "opted out",
+  "Enviar prueba a mi correo": "Send test to my email",
+  "Enviar a miembros": "Send to members",
+  "Vista previa": "Preview",
+  "Así lo va a ver la clienta": "This is how the client will see it",
+  "Promoción para miembros": "Promotion for members",
+  "Hola": "Hello",
+  "Tu mensaje aparecerá acá.": "Your message will appear here.",
+  "Ver mi tarjeta": "View my card",
+  "Si no querés recibir promociones, avisanos en el salón.":
+    "If you don't want to receive promotions, let us know at the salon.",
+  "Campañas enviadas": "Sent campaigns",
+  "Historial de las últimas campañas.": "History of the latest campaigns.",
+  "Todavía no enviaste campañas.": "You haven't sent any campaigns yet.",
+  "Ver": "View",
+  "Reutilizar": "Reuse",
+  "No se puede deshacer. Revisá la vista previa antes de enviar.":
+    "This can't be undone. Review the preview before sending.",
+  "Promociones por correo": "Email promotions",
+  "No recibe promociones.": "Doesn't receive promotions.",
+  "Recibe promociones.": "Receives promotions.",
+  "Recibir promociones": "Receive promotions",
+  "La clienta no recibirá promociones.": "The client won't receive promotions.",
+  "La clienta volverá a recibir promociones.":
+    "The client will receive promotions again.",
+  "No se pudo actualizar. Revisá que el SQL de Promociones esté corrido.":
+    "Couldn't update. Check that the Promotions SQL has been run.",
 };
 
 export type Idioma = "es" | "en";

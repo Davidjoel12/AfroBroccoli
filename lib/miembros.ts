@@ -44,6 +44,8 @@ export type MiembroMembresia = {
   telefono: string;
   telefonoFormato: string;
   membresiaDesde: string | null;
+  /** true = pidió no recibir campañas de promociones por correo. */
+  promocionesOptOut: boolean;
   periodos: PeriodoMembresia[];
   periodoActual: PeriodoMembresia | null;
   periodoPendiente: PeriodoMembresia | null;
@@ -171,6 +173,7 @@ export function calcularResumenMembresia(
   | "telefono"
   | "telefonoFormato"
   | "membresiaDesde"
+  | "promocionesOptOut"
   | "periodos"
 > {
   const mes = mesActualClave(hoy);

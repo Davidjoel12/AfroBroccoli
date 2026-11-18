@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
 import { useT } from "@/components/i18n/language-provider";
 import { supabase } from "@/lib/supabase";
 import { enlaceWhatsapp } from "@/lib/config";
@@ -245,93 +246,6 @@ function Metrica({
       <p className="mt-1 text-2xl font-semibold text-ink">{value}</p>
       <p className="mt-1 text-xs text-muted">{detalle}</p>
     </Card>
-  );
-}
-
-function Modal({
-  titulo,
-  subtitulo,
-  onClose,
-  children,
-  footer,
-  ancho = "max-w-lg",
-}: {
-  titulo: string;
-  subtitulo?: string;
-  onClose: () => void;
-  children: ReactNode;
-  footer?: ReactNode;
-  ancho?: string;
-}) {
-  const t = useT();
-  const cerrarRef = useRef<HTMLButtonElement>(null);
-  const anteriorRef = useRef<HTMLElement | null>(null);
-  const onCloseRef = useRef(onClose);
-
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    anteriorRef.current = document.activeElement as HTMLElement | null;
-    const overflowPrevio = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    cerrarRef.current?.focus();
-
-    const alTeclear = (evento: KeyboardEvent) => {
-      if (evento.key === "Escape") onCloseRef.current();
-    };
-
-    document.addEventListener("keydown", alTeclear);
-    return () => {
-      document.body.style.overflow = overflowPrevio;
-      document.removeEventListener("keydown", alTeclear);
-      anteriorRef.current?.focus();
-    };
-  }, []);
-
-  return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto bg-ink/55 p-4">
-      <div className="flex min-h-full items-center justify-center">
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={titulo}
-          className={cn(
-            "flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-card bg-white shadow-2xl",
-            ancho
-          )}
-        >
-          <div className="flex items-start justify-between gap-4 border-b border-ink/10 p-5 sm:p-6">
-            <div className="min-w-0">
-              <h2 className="text-xl font-semibold text-ink">{titulo}</h2>
-              {subtitulo && (
-                <p className="mt-1 text-sm text-muted">{subtitulo}</p>
-              )}
-            </div>
-            <button
-              ref={cerrarRef}
-              type="button"
-              onClick={onClose}
-              aria-label={t("Cerrar")}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-cream hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-            >
-              <IconoCerrar />
-            </button>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
-            {children}
-          </div>
-
-          {footer && (
-            <div className="border-t border-ink/10 bg-cream/40 p-4 sm:px-6">
-              {footer}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -699,6 +613,35 @@ function DetalleModal({
     onDesmarcarPago(periodo);
   }
 
+  async function alternarPromociones() {
+    setTrabajando(true);
+    setError("");
+
+    const nuevoOptOut = !miembro.promocionesOptOut;
+    const { error: errGuardar } = await supabase
+      .from("clientes")
+      .update({ promociones_opt_out: nuevoOptOut })
+      .eq("id", miembro.id);
+
+    if (errGuardar) {
+      console.error("[miembros:promociones]", errGuardar.code, errGuardar.message);
+      setError(
+        t(
+          "No se pudo actualizar. Revisá que el SQL de Promociones esté corrido."
+        )
+      );
+      setTrabajando(false);
+      return;
+    }
+
+    setTrabajando(false);
+    onChanged(
+      nuevoOptOut
+        ? t("La clienta no recibirá promociones.")
+        : t("La clienta volverá a recibir promociones.")
+    );
+  }
+
   async function quitarMembresia() {
     if (
       !window.confirm(
@@ -779,6 +722,29 @@ function DetalleModal({
               </dd>
             </div>
           </dl>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink/10 bg-white/60 px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">
+                {t("Promociones por correo")}
+              </p>
+              <p className="text-xs text-muted">
+                {miembro.promocionesOptOut
+                  ? t("No recibe promociones.")
+                  : t("Recibe promociones.")}
+              </p>
+            </div>
+            <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-ink">
+              <input
+                type="checkbox"
+                checked={!miembro.promocionesOptOut}
+                onChange={alternarPromociones}
+                disabled={trabajando}
+                className="h-4 w-4 accent-primary"
+              />
+              {t("Recibir promociones")}
+            </label>
+          </div>
         </div>
 
         <div>
@@ -1364,10 +1330,10 @@ export default function MiembrosPanel({
       {setupError && (
         <div className="rounded-card border border-pending/50 bg-pending/10 p-4 text-sm">
           <p className="font-semibold text-ink">
-            {t("Falta correr el SQL de Miembros en Supabase.")}
+            {t("Falta correr el SQL de Miembros o Promociones en Supabase.")}
           </p>
           <p className="mt-1 text-muted">
-            {t("Ejecutá el archivo supabase/fase-1-miembros.sql en el SQL Editor. Mientras tanto, la página puede quedar en modo lectura.")}
+            {t("Ejecutá el SQL pendiente en el SQL Editor. Mientras tanto, algunas funciones pueden quedar en modo lectura.")}
           </p>
           <details className="mt-2">
             <summary className="cursor-pointer text-xs font-semibold text-ink">

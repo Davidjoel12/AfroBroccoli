@@ -1,4 +1,8 @@
-import { InputHTMLAttributes, ReactNode } from "react";
+import {
+  InputHTMLAttributes,
+  ReactNode,
+  TextareaHTMLAttributes,
+} from "react";
 import { cn } from "@/lib/utils";
 
 // Nota: antes esto era <label> envolviendo children. Eso rompe los menús
@@ -29,6 +33,21 @@ export function Input({
     <input
       className={cn(
         "h-11 rounded-lg border border-ink/20 bg-white/50 px-5 py-2 text-ink placeholder:text-muted/70 focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function Textarea({
+  className,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      className={cn(
+        "min-h-28 rounded-lg border border-ink/20 bg-white/50 px-5 py-3 text-ink placeholder:text-muted/70 focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none",
         className,
       )}
       {...props}

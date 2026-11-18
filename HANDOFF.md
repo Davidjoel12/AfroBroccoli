@@ -32,6 +32,92 @@ Los objetos de fases anteriores (`visitas.membresia`, `cumpleanos_correo_anio`, 
 - Probar pago, deshacer pago, historial, recordatorio individual, recordatorio masivo y escaneo con membresía vencida.
 - La inspección visual con Playwright quedó **pendiente** por pedido explícito; el build, TypeScript y ESLint ya pasan.
 
+## 0b. Sesión 2026-11-17 — Fase 2 Promociones
+
+### Qué quedó implementado
+- Cuarta opción **Promociones** en Configuración, visible y accesible **solo para admin**. Ruta: `/configuracion/promociones`.
+- Compositor de campañas: asunto, título de la promoción, mensaje, vigencia opcional, vista previa y resumen de destinatarios.
+- Envío a **todos los miembros con correo válido**, aunque tengan cuota pendiente. Se excluyen los que tienen `clientes.promociones_opt_out = true` y los que no tienen correo o código.
+- Botón **Enviar prueba a mi correo**: manda el correo al email del admin usando el nombre/código del primer miembro como muestra.
+- Correo con saludo personalizado, título, mensaje, vigencia y botón **Ver mi tarjeta** (`/c/CODIGO`). Pie con el aviso de baja.
+- Historial en la tabla `campanas` (últimas 12) con asunto, contenido, fecha, enviados, omitidos y errores. Se puede **Reutilizar** una campaña para cargar el contenido en el compositor.
+- Toggle **Recibir promociones** en el detalle del miembro (solo admin). No quita la membresía; solo lo saca de las campañas.
+- API `POST /api/miembros/promocion` (solo admin). Máximo **100 destinatarios** por envío; se manda en lotes de 4 para no saturar Gmail. Si el proveedor no está configurado, responde 503 `sin_configurar`.
+- `lib/campanas.ts` centraliza tipos, `MAX_DESTINATARIOS`, `fechaLarga`, `erroresDe` y la plantilla `construirCorreoCampana`.
+- `lib/email.ts` agrega `correoConfigurado()` para revisar las credenciales antes de empezar una campaña.
+- `components/ui/modal.tsx` se extrajo de Miembros para compartirlo con Promociones. `components/ui/input.tsx` agrega `Textarea`.
+
+### SQL de Promociones
+Se ejecuta a mano en Supabase → SQL Editor; **no se guarda como archivo en el repo**.
+
+```sql
+begin;
+
+alter table public.clientes
+  add column if not exists promociones_opt_out boolean not null default false;
+
+comment on column public.clientes.promociones_opt_out is
+  'true = la clienta pidió no recibir campañas de promociones por correo.';
+
+create table if not exists public.campanas (
+  id uuid primary key default gen_random_uuid(),
+  asunto text not null,
+  titulo text not null,
+  mensaje text not null,
+  vigente_hasta date,
+  enviada_at timestamptz not null default now(),
+  enviados integer not null default 0,
+  omitidos integer not null default 0,
+  errores jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists campanas_enviada_at_idx
+  on public.campanas (enviada_at desc);
+
+comment on table public.campanas is
+  'Historial de campañas de promoción enviadas a miembros.';
+
+alter table public.campanas enable row level security;
+
+drop policy if exists "campanas admin" on public.campanas;
+create policy "campanas admin" on public.campanas
+  for all
+  to authenticated
+  using (
+    exists (
+      select 1 from public.profiles
+      where profiles.id = auth.uid() and profiles.role = 'admin'
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.profiles
+      where profiles.id = auth.uid() and profiles.role = 'admin'
+    )
+  );
+
+notify pgrst, 'reload schema';
+
+commit;
+```
+
+> Si falta la columna o la tabla, la página de Promociones muestra un aviso y desactiva el envío. La página de Miembros también avisa que hay SQL pendiente.
+
+### Variables de correo
+- Para usar Gmail: `GMAIL_USER` y `GMAIL_APP_PASSWORD` en `.env.local` y en Vercel. Es la opción recomendada por ahora, mientras no haya dominio propio.
+- `lib/email.ts` mantiene la prioridad **Gmail → Brevo → Resend**. Brevo necesita `EMAIL_FROM` verificado; Resend puede usar `onboarding@resend.dev` para pruebas.
+- El envío real usa el mismo proveedor que los recordatorios y el cumpleaños.
+
+### Verificación pendiente
+- Correr el SQL de Promociones en Supabase.
+- Confirmar que `GMAIL_USER` y `GMAIL_APP_PASSWORD` estén configurados en local y en Vercel.
+- Probar **Enviar prueba a mi correo** y revisar el HTML, el link a la tarjeta y el pie de baja.
+- Probar una campaña real con el cliente de prueba `AB-0000` y verificar que llegue, que se guarde en el historial y que el contador de enviados sea correcto.
+- Probar el toggle **Recibir promociones** en el detalle del miembro: al desactivarlo, no debe recibir la próxima campaña; al reactivarlo, sí.
+- Confirmar que el staff no ve Promociones en el nav, no puede entrar a `/configuracion/promociones` y recibe 403 si llama la API.
+- `npx tsc --noEmit`, ESLint de los archivos tocados y `npx next build` ya pasan.
+
 ## 0. Sesión 2026-11-06 — cumpleaños automático + aviso a los 4 sellos
 
 ### Modelo nuevo
