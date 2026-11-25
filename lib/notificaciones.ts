@@ -7,7 +7,7 @@ import type { Cliente, Premio } from "@/lib/types";
 //   1. Casi premio (al cliente le falta 1 sello para la meta)
 //   2. Cumpleaños próximos (2 días por defecto)
 //   3. Premio pendiente de entregar (cliente completó su meta de sellos)
-//   4. Cliente inactivo (no ha vuelto en 1 mes 15 días) → reagendar cita
+//   4. Cliente inactivo (no ha vuelto en 90 días) → reagendar cita
 //
 // Los umbrales son configurables. Mientras el backend no exista, esta
 // librería funciona sobre los datos de `Cliente` que ya llegan de Supabase.
@@ -32,6 +32,8 @@ export type Notificacion = {
   cuerpo: string;
   leida: boolean;
   fecha: string; // ISO string
+  /** Solo en `inactividad`: días completos sin visitar el salón. */
+  diasInactivo?: number;
   /** Solo en `premio_pendiente`: id de la fila en `premios` para marcarla entregada. */
   premioId?: string;
 };
@@ -43,7 +45,7 @@ export type UmbralesNotificacion = {
 
 export const UMBRALES_POR_DEFECTO: UmbralesNotificacion = {
   diasCumpleanos: 2,
-  diasInactividad: 45, // 1 mes + 15 días
+  diasInactividad: 90, // más de 2 meses sin visitar el salón
 };
 
 /** Calcula la edad que cumplirá este año (o el próximo si ya pasó). */
@@ -109,7 +111,9 @@ export function generarNotificaciones(
       c.sellos === c.metaSellos - 1
     ) {
       notificaciones.push({
-        id: `casi-premio-${c.id}`,
+        // La versión incluye la última visita y los sellos: si el aviso se
+        // resuelve y más adelante vuelve a aparecer, arranca como nuevo.
+        id: `casi-premio-${c.id}-${c.ultimaVisita ?? "sin-visita"}-${c.sellos}`,
         tipo: "casi_premio",
         clienteId: c.id,
         clienteNombre: c.nombre,
@@ -128,7 +132,9 @@ export function generarNotificaciones(
       const dias = diasHasta(proximo, hoy);
       if (dias >= 0 && dias <= umbrales.diasCumpleanos) {
         notificaciones.push({
-          id: `cumple-${c.id}`,
+          // Incluye el año del próximo cumpleaños para que el aviso vuelva a
+          // aparecer el año siguiente aunque el anterior se haya leído.
+          id: `cumple-${c.id}-${proximo.getFullYear()}`,
           tipo: "cumpleanos",
           clienteId: c.id,
           clienteNombre: c.nombre,
@@ -150,7 +156,9 @@ export function generarNotificaciones(
       const diasInactivo = diasHasta(hoy, ultima);
       if (diasInactivo >= umbrales.diasInactividad) {
         notificaciones.push({
-          id: `inactivo-${c.id}`,
+          // Si el cliente vuelve y luego se inactiva de nuevo, `ultimaVisita`
+          // cambia y el aviso se trata como uno nuevo.
+          id: `inactivo-${c.id}-${c.ultimaVisita}`,
           tipo: "inactividad",
           clienteId: c.id,
           clienteNombre: c.nombre,
@@ -160,6 +168,7 @@ export function generarNotificaciones(
           cuerpo: `${c.nombre} no vuelve hace ${diasInactivo} días. Reagendá su cita.`,
           leida: false,
           fecha: hoy.toISOString(),
+          diasInactivo,
         });
       }
     }

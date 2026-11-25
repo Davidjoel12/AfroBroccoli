@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
   colorPorTipo,
+  UMBRALES_POR_DEFECTO,
   type Notificacion,
 } from "@/lib/notificaciones";
 import { useT } from "@/components/i18n/language-provider";
@@ -61,7 +62,7 @@ const NOTIFICACIONES_DEMO: Notificacion[] = [
     clienteCodigo: "AB-1003",
     telefono: "50760000003",
     titulo: "Cliente inactivo",
-    cuerpo: "Lucia Fernandez no vuelve hace 45 dias. Reagenda su cita.",
+    cuerpo: "Lucia Fernandez no vuelve hace 90 dias. Reagenda su cita.",
     leida: true,
     fecha: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   },
@@ -92,6 +93,219 @@ function abrirWhatsApp(telefono: string | undefined, mensaje: string) {
   window.open(url, "_blank");
 }
 
+type NotificacionItemProps = {
+  notificacion: Notificacion;
+  leida: boolean;
+  compacto: boolean;
+  mostrarDemo: boolean;
+  onSeleccionar: (n: Notificacion) => void;
+  onEntregar: (premioId: string) => void;
+};
+
+function NotificacionItem({
+  notificacion: n,
+  leida: yaLeida,
+  compacto,
+  mostrarDemo,
+  onSeleccionar,
+  onEntregar,
+}: NotificacionItemProps) {
+  const t = useT();
+  const color = colorPorTipo(n.tipo);
+  const esCumpleHoy = n.tipo === "cumpleanos" && n.cuerpo.includes("Hoy");
+
+  return (
+    <div
+      className={cn(
+        "group flex items-start transition-colors cursor-pointer",
+        compacto ? "gap-2 p-2 rounded-lg border" : "gap-3 p-3 rounded-xl border",
+        yaLeida
+          ? "bg-transparent border-transparent"
+          : "bg-white border-ink/10"
+      )}
+      onClick={() => onSeleccionar(n)}
+    >
+      {!yaLeida && (
+        <div
+          className={cn(
+            "shrink-0 mt-1 rounded-full",
+            compacto ? "h-2 w-2" : "h-2.5 w-2.5"
+          )}
+          style={{ backgroundColor: color }}
+        />
+      )}
+
+      <div
+        className={cn(
+          "shrink-0 mt-0.5 flex items-center justify-center",
+          compacto ? "h-6 w-6 rounded-md" : "h-8 w-8 rounded-lg"
+        )}
+        style={{ backgroundColor: `${color}15` }}
+      >
+        <IconoNotificacion tipo={n.tipo} color={color} />
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className={cn("flex items-baseline", compacto ? "gap-1.5" : "gap-2")}>
+          <h3
+            className={cn(
+              "font-semibold text-ink leading-tight",
+              compacto ? "text-xs" : "text-sm"
+            )}
+          >
+            {n.titulo}
+          </h3>
+          <span
+            className={cn(
+              "font-medium text-muted uppercase tracking-wider",
+              compacto ? "text-[9px]" : "text-[10px]"
+            )}
+          >
+            {esCumpleHoy ? t("HOY") : t("AHORA")}
+          </span>
+        </div>
+        <p
+          className={cn(
+            "text-muted leading-snug",
+            compacto ? "mt-0.5 text-[10px]" : "mt-1 text-sm"
+          )}
+        >
+          {n.cuerpo}
+        </p>
+        {n.premioId && !mostrarDemo && (
+          <button
+            type="button"
+            onClick={(evento) => {
+              evento.stopPropagation();
+              onEntregar(n.premioId!);
+            }}
+            className={cn(
+              "font-semibold text-primary underline underline-offset-2 hover:text-primary/90",
+              compacto ? "mt-1 text-[10px]" : "mt-2 text-xs"
+            )}
+          >
+            {t("Marcar como entregado")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type GrupoInactivosProps = {
+  notificaciones: Notificacion[];
+  estaLeida: (n: Notificacion) => boolean;
+  abierto: boolean;
+  onToggle: () => void;
+  compacto: boolean;
+  mostrarDemo: boolean;
+  onSeleccionar: (n: Notificacion) => void;
+  onEntregar: (premioId: string) => void;
+};
+
+function GrupoInactivos({
+  notificaciones,
+  estaLeida,
+  abierto,
+  onToggle,
+  compacto,
+  mostrarDemo,
+  onSeleccionar,
+  onEntregar,
+}: GrupoInactivosProps) {
+  const t = useT();
+  const color = colorPorTipo("inactividad");
+  const noLeidas = notificaciones.filter((n) => !estaLeida(n)).length;
+  const dias = UMBRALES_POR_DEFECTO.diasInactividad;
+
+  return (
+    <div
+      className={cn(
+        "mt-2 overflow-hidden border border-ink/10 bg-white/60",
+        compacto ? "rounded-lg" : "rounded-xl"
+      )}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={abierto}
+        className={cn(
+          "flex w-full items-center text-left transition-colors hover:bg-white/70",
+          compacto ? "gap-2 p-2" : "gap-3 p-3"
+        )}
+      >
+        <div
+          className={cn(
+            "shrink-0 flex items-center justify-center",
+            compacto ? "h-6 w-6 rounded-md" : "h-8 w-8 rounded-lg"
+          )}
+          style={{ backgroundColor: `${color}15` }}
+        >
+          <IconoNotificacion tipo="inactividad" color={color} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "font-semibold text-ink leading-tight",
+                compacto ? "text-xs" : "text-sm"
+              )}
+            >
+              {t("Clientes inactivos")}
+            </span>
+            {noLeidas > 0 && (
+              <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold text-ink">
+                {noLeidas}
+              </span>
+            )}
+          </div>
+          <span
+            className={cn(
+              "block text-muted leading-snug",
+              compacto ? "mt-0.5 text-[10px]" : "mt-1 text-xs"
+            )}
+          >
+            {notificaciones.length}{" "}
+            {notificaciones.length === 1 ? t("cliente") : t("clientes")} ·{" "}
+            {dias}+ {t("días sin visita")}
+          </span>
+        </div>
+
+        <span
+          className="shrink-0 text-sm font-semibold text-muted"
+          aria-hidden="true"
+        >
+          {abierto ? "−" : "+"}
+        </span>
+      </button>
+
+      {abierto && (
+        <div
+          className={cn(
+            "border-t border-ink/10",
+            compacto ? "p-1.5" : "p-2"
+          )}
+        >
+          <div className={cn(compacto ? "space-y-1" : "space-y-1.5")}>
+            {notificaciones.map((n) => (
+              <NotificacionItem
+                key={n.id}
+                notificacion={n}
+                leida={estaLeida(n)}
+                compacto={compacto}
+                mostrarDemo={mostrarDemo}
+                onSeleccionar={onSeleccionar}
+                onEntregar={onEntregar}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function NotificacionesPanel({
   onCerrar,
   onNotificacionClick,
@@ -103,16 +317,25 @@ export function NotificacionesPanel({
   const { notificaciones: notificacionesProvider, estaLeida, marcarLeida, marcarTodasLeidas: marcarTodasLeidasProvider, marcarPremioEntregado } =
     useNotificaciones();
   const [demo, setDemo] = useState(false);
+  const [inactivosAbiertos, setInactivosAbiertos] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const notificacionesReales = notificacionesProvider;
   const hayNotificacionesReales = notificacionesReales.length > 0;
-  const mostrarDemo = demo || (!hayNotificacionesReales && !demo);
+  const mostrarDemo = demo;
   const notificaciones = mostrarDemo ? NOTIFICACIONES_DEMO : notificacionesReales;
   const noLeidas = notificaciones.filter((n) => !estaLeida(n));
+  const inactivas = notificaciones
+    .filter((n) => n.tipo === "inactividad")
+    .sort((a, b) => (b.diasInactivo ?? 0) - (a.diasInactivo ?? 0));
+  const otrasNotificaciones = notificaciones.filter((n) => n.tipo !== "inactividad");
 
   const marcarTodasLeidas = () => {
     marcarTodasLeidasProvider(notificaciones.map((n) => n.id));
+  };
+
+  const entregarPremio = (premioId: string) => {
+    void marcarPremioEntregado(premioId);
   };
 
   const volverAtras = () => {
@@ -178,7 +401,7 @@ export function NotificacionesPanel({
       {mostrarDemo && !hayNotificacionesReales && (
         <div className="px-3 py-1.5 bg-gold/10 border-b border-gold/30">
           <p className="text-[10px] text-center text-gold/90 font-medium">
-            Demo - Asi se ven las notificaciones
+            {t("Modo demostración")} · {t("Así se ven las notificaciones")}
           </p>
         </div>
       )}
@@ -189,58 +412,35 @@ export function NotificacionesPanel({
             <span style={{ fontSize: 20 }}>!</span>
             <p className="font-semibold text-ink mt-2">{t("Sin notificaciones")}</p>
             <p className="mt-1 text-xs text-muted">
-              {t("Cuando haya algo nuevo, aparecera aqui.")}
+              {t("Cuando haya algo nuevo, aparecerá aquí.")}
             </p>
           </div>
         ) : (
-          notificaciones.map((n) => {
-            const color = colorPorTipo(n.tipo);
-            const yaLeida = estaLeida(n);
-            return (
-              <div
+          <>
+            {otrasNotificaciones.map((n) => (
+              <NotificacionItem
                 key={n.id}
-                className={cn(
-                  "group flex items-start gap-2 p-2 rounded-lg border transition-colors cursor-pointer",
-                  yaLeida
-                    ? "bg-transparent border-transparent"
-                    : "bg-white border-ink/10"
-                )}
-                onClick={() => manejarClickNotificacion(n)}
-              >
-                {!yaLeida && (
-                  <div className="shrink-0 mt-1 h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-                )}
-
-                <div className="shrink-0 mt-0.5 h-6 w-6 rounded-md flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
-                  <IconoNotificacion tipo={n.tipo} color={color} />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-1.5">
-                    <h3 className="font-semibold text-xs text-ink leading-tight">{n.titulo}</h3>
-                    <span className="text-[9px] font-medium text-muted uppercase tracking-wider">
-                      {n.tipo === "cumpleanos" && n.cuerpo.includes("Hoy")
-                        ? t("HOY")
-                        : t("AHORA")}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-[10px] text-muted leading-snug">{n.cuerpo}</p>
-                  {n.premioId && !mostrarDemo && (
-                    <button
-                      type="button"
-                      onClick={(evento) => {
-                        evento.stopPropagation();
-                        void marcarPremioEntregado(n.premioId!);
-                      }}
-                      className="mt-1 text-[10px] font-semibold text-primary underline underline-offset-2 hover:text-primary/90"
-                    >
-                      {t("Marcar como entregado")}
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })
+                notificacion={n}
+                leida={estaLeida(n)}
+                compacto
+                mostrarDemo={mostrarDemo}
+                onSeleccionar={manejarClickNotificacion}
+                onEntregar={entregarPremio}
+              />
+            ))}
+            {inactivas.length > 0 && (
+              <GrupoInactivos
+                notificaciones={inactivas}
+                estaLeida={estaLeida}
+                abierto={inactivosAbiertos}
+                onToggle={() => setInactivosAbiertos((prev) => !prev)}
+                compacto
+                mostrarDemo={mostrarDemo}
+                onSeleccionar={manejarClickNotificacion}
+                onEntregar={entregarPremio}
+              />
+            )}
+          </>
         )}
       </div>
 
@@ -300,7 +500,7 @@ export function NotificacionesPanel({
         {mostrarDemo && !hayNotificacionesReales && (
           <div className="px-4 py-2 bg-gold/10 border-b border-gold/30">
             <p className="text-xs text-center text-gold/90 font-medium">
-              Demo - Asi se ven las notificaciones
+              {t("Modo demostración")} · {t("Así se ven las notificaciones")}
             </p>
           </div>
         )}
@@ -313,58 +513,35 @@ export function NotificacionesPanel({
               </div>
               <p className="font-semibold text-ink">{t("Sin notificaciones")}</p>
               <p className="mt-1 text-sm text-muted">
-                {t("Cuando haya algo nuevo, aparecera aqui.")}
+                {t("Cuando haya algo nuevo, aparecerá aquí.")}
               </p>
             </div>
           ) : (
-            notificaciones.map((n) => {
-              const color = colorPorTipo(n.tipo);
-              const yaLeida = estaLeida(n);
-              return (
-                <div
+            <>
+              {otrasNotificaciones.map((n) => (
+                <NotificacionItem
                   key={n.id}
-                  className={cn(
-                    "group flex items-start gap-3 p-3 rounded-xl border transition-colors cursor-pointer",
-                    yaLeida
-                      ? "bg-transparent border-transparent"
-                      : "bg-white border-ink/10"
-                  )}
-                  onClick={() => manejarClickNotificacion(n)}
-                >
-                  {!yaLeida && (
-                    <div className="shrink-0 mt-1 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-                  )}
-
-                    <div className="shrink-0 mt-0.5 h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
-                      <IconoNotificacion tipo={n.tipo} color={color} />
-                    </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <h3 className="font-semibold text-sm text-ink leading-tight">{n.titulo}</h3>
-                      <span className="text-[10px] font-medium text-muted uppercase tracking-wider">
-                        {n.tipo === "cumpleanos" && n.cuerpo.includes("Hoy")
-                          ? t("HOY")
-                          : t("AHORA")}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-muted leading-snug">{n.cuerpo}</p>
-                    {n.premioId && !mostrarDemo && (
-                      <button
-                        type="button"
-                        onClick={(evento) => {
-                          evento.stopPropagation();
-                          void marcarPremioEntregado(n.premioId!);
-                        }}
-                        className="mt-2 text-xs font-semibold text-primary underline underline-offset-2 hover:text-primary/90"
-                      >
-                        {t("Marcar como entregado")}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })
+                  notificacion={n}
+                  leida={estaLeida(n)}
+                  compacto={false}
+                  mostrarDemo={mostrarDemo}
+                  onSeleccionar={manejarClickNotificacion}
+                  onEntregar={entregarPremio}
+                />
+              ))}
+              {inactivas.length > 0 && (
+                <GrupoInactivos
+                  notificaciones={inactivas}
+                  estaLeida={estaLeida}
+                  abierto={inactivosAbiertos}
+                  onToggle={() => setInactivosAbiertos((prev) => !prev)}
+                  compacto={false}
+                  mostrarDemo={mostrarDemo}
+                  onSeleccionar={manejarClickNotificacion}
+                  onEntregar={entregarPremio}
+                />
+              )}
+            </>
           )}
         </div>
 

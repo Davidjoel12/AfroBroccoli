@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
@@ -25,8 +24,9 @@ import {
 // ============================================================================
 // Página de Miembros
 //
-// Solo la usa el admin. La ruta y la tabla de cuotas están protegidas en el
-// servidor; acá se maneja la interfaz, los pagos y los recordatorios.
+// Solo la usa el admin. La ruta redirige a los demás desde el cliente y las
+// tablas siguen protegidas por RLS; acá se maneja la interfaz, los pagos y los
+// recordatorios.
 // ============================================================================
 
 const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -924,14 +924,15 @@ export default function MiembrosPanel({
   config,
   hoy,
   setupError,
+  onRefresh,
 }: {
   miembros: MiembroMembresia[];
   config: ConfigMembresia;
   hoy: string;
   setupError: string | null;
+  onRefresh: () => void;
 }) {
   const t = useT();
-  const router = useRouter();
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [montoDefecto, setMontoDefecto] = useState(String(config.monto));
@@ -1033,7 +1034,7 @@ export default function MiembrosPanel({
   function pagoGuardado() {
     setPago(null);
     setAviso({ tipo: "ok", texto: t("Pago registrado.") });
-    router.refresh();
+    onRefresh();
   }
 
   function abrirDesmarcar(
@@ -1080,7 +1081,7 @@ export default function MiembrosPanel({
       tipo: "ok",
       texto: t("Pago deshecho. La cuota volvió a pendiente."),
     });
-    router.refresh();
+    onRefresh();
   }
 
   async function guardarMonto() {
@@ -1110,7 +1111,7 @@ export default function MiembrosPanel({
 
     setGuardandoMonto(false);
     setAviso({ tipo: "ok", texto: t("Monto guardado.") });
-    router.refresh();
+    onRefresh();
   }
 
   async function enviarRecordatorio(miembro: MiembroMembresia) {
@@ -1158,7 +1159,7 @@ export default function MiembrosPanel({
           texto: `${t("Recordatorio enviado a")} ${miembro.correo}`,
         });
       }
-      router.refresh();
+      onRefresh();
     } catch (error) {
       setAviso({
         tipo: "error",
@@ -1232,7 +1233,7 @@ export default function MiembrosPanel({
         texto: partes.join(" "),
       });
       setConfirmarRecordatorio(false);
-      router.refresh();
+      onRefresh();
     } catch (error) {
       setAviso({
         tipo: "error",
@@ -1719,7 +1720,7 @@ export default function MiembrosPanel({
           onChanged={(texto, tipo = "ok") => {
             setDetalle(null);
             setAviso({ tipo, texto });
-            router.refresh();
+            onRefresh();
           }}
         />
       )}

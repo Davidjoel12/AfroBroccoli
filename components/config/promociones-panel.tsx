@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -21,9 +20,9 @@ import {
 // Página de Promociones (Fase 2)
 //
 // Solo la usa el admin. Acá se redacta una campaña, se ve la vista previa y
-// se manda a los miembros que tengan correo y no estén dados de baja. El
-// envío real y la lectura de destinatarios viven en
-// /api/miembros/promocion.
+// se manda a los miembros que tengan correo y no estén dados de baja. Los
+// destinatarios se leen en el cliente y el envío real vive en
+// /api/miembros/promocion, que valida el rol en el servidor.
 // ============================================================================
 
 const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -251,14 +250,15 @@ export default function PromocionesPanel({
   campanas,
   setupError,
   hoy,
+  onRefresh,
 }: {
   miembros: MiembroPromocion[];
   campanas: Campana[];
   setupError: string | null;
   hoy: string;
+  onRefresh: () => void;
 }) {
   const t = useT();
-  const router = useRouter();
 
   const [formulario, setFormulario] = useState<Formulario>(FORMULARIO_VACIO);
   const [aviso, setAviso] = useState<Aviso | null>(null);
@@ -423,7 +423,7 @@ export default function PromocionesPanel({
       });
       setFormulario(FORMULARIO_VACIO);
       setConfirmar(false);
-      router.refresh();
+      onRefresh();
     } catch (err) {
       console.error("[promociones:enviar]", err);
       setAviso({
